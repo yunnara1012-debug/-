@@ -1,0 +1,10 @@
+{
+  "name": "가맹점 관리",
+  "short_name": "가맹점",
+  "description": "호랑이족발 가맹점 관리 시스템",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#f97316",
+  "orientation": "portrait-primary"
+}

@@ -179,16 +179,19 @@ export default function Home() {
       {/* Top Bar */}
       <header className="flex-none bg-white border-b border-gray-200 shadow-sm z-50">
         {/* 메인 행 */}
-        <div className="flex items-center gap-2 px-3 py-2">
+        <div className="flex items-center gap-1.5 px-3 py-2">
           {/* 브랜드 선택 */}
-          <div className="w-44 flex-none">
+          <div className="w-28 md:w-44 flex-none">
             <BrandSelector brands={brands} selectedBrandId={selectedBrandId} onSelect={setSelectedBrandId} />
           </div>
 
-          {/* 검색창 */}
-          <div className="flex-1 min-w-0">
+          {/* 검색창 - 데스크톱만 */}
+          <div className="hidden md:block flex-1 min-w-0">
             <SearchBar stores={selectedBrandStores} onVerdict={handleVerdict} />
           </div>
+
+          {/* 모바일 스페이서 */}
+          <div className="flex-1 md:hidden" />
 
           {/* 필터 버튼 */}
           <button
@@ -196,7 +199,7 @@ export default function Home() {
             className={`relative flex items-center gap-1 px-2 py-1.5 text-xs rounded-md font-medium transition-colors whitespace-nowrap ${showFilter || activeFilterCount > 0 ? 'bg-orange-100 text-orange-700' : 'bg-gray-100 hover:bg-gray-200 text-gray-600'}`}
           >
             <SlidersHorizontal size={12} />
-            필터
+            <span className="hidden sm:inline">필터</span>
             {activeFilterCount > 0 && (
               <span className="absolute -top-1 -right-1 w-4 h-4 bg-orange-500 text-white text-[10px] rounded-full flex items-center justify-center font-bold">
                 {activeFilterCount}
@@ -210,7 +213,7 @@ export default function Home() {
             className={`flex items-center gap-1 px-2 py-1.5 text-xs rounded-md font-medium transition-colors whitespace-nowrap ${showStoreList ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 hover:bg-gray-200 text-gray-600'}`}
           >
             <List size={12} />
-            {showStoreList ? '목록접기' : '목록보기'}
+            <span className="hidden sm:inline">{showStoreList ? '목록접기' : '목록보기'}</span>
           </button>
 
           {/* 매장 추가 */}
@@ -219,13 +222,13 @@ export default function Home() {
             className="flex items-center gap-1 px-2 py-1.5 text-xs bg-blue-500 hover:bg-blue-600 text-white rounded-md font-medium transition-colors whitespace-nowrap"
           >
             <StoreIcon size={12} />
-            매장
+            <span className="hidden sm:inline">매장</span>
           </button>
 
-          {/* 불러오기 */}
+          {/* 불러오기 - 데스크톱만 */}
           <button
             onClick={() => setShowImportPanel(true)}
-            className="flex items-center gap-1 px-2 py-1.5 text-xs bg-green-500 hover:bg-green-600 text-white rounded-md font-medium transition-colors whitespace-nowrap"
+            className="hidden md:flex items-center gap-1 px-2 py-1.5 text-xs bg-green-500 hover:bg-green-600 text-white rounded-md font-medium transition-colors whitespace-nowrap"
           >
             <Download size={12} />
             불러오기
@@ -240,7 +243,7 @@ export default function Home() {
               <MoreVertical size={16} />
             </button>
             {showMore && (
-              <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 min-w-[120px]">
+              <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 min-w-[140px]">
                 <button
                   onClick={handleAddBrand}
                   className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-50 rounded-lg"
@@ -248,9 +251,21 @@ export default function Home() {
                   <Plus size={13} />
                   브랜드 추가
                 </button>
+                <button
+                  onClick={() => { setShowImportPanel(true); setShowMore(false); }}
+                  className="md:hidden w-full flex items-center gap-2 px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-50 rounded-lg"
+                >
+                  <Download size={13} />
+                  불러오기
+                </button>
               </div>
             )}
           </div>
+        </div>
+
+        {/* 검색창 - 모바일만 */}
+        <div className="md:hidden px-3 pb-2">
+          <SearchBar stores={selectedBrandStores} onVerdict={handleVerdict} />
         </div>
 
         {/* 필터 행 */}
