@@ -44,7 +44,7 @@ function getBrandLogo(group: Store[], currentBrands: Brand[]): string | null {
   return null;
 }
 
-function makeLogoPinElement(logoUrl: string, color: string, count: number, onClick: () => void, label?: string): HTMLElement {
+function makeLogoPinElement(logoUrl: string, color: string, count: number, onClick: () => void, label?: string): { el: HTMLElement; yAnchor: number } {
   const el = document.createElement('div');
   el.style.cssText = 'position:relative;display:inline-flex;flex-direction:column;align-items:center;cursor:pointer;pointer-events:auto;filter:drop-shadow(0 3px 8px rgba(0,0,0,0.3))';
 
@@ -70,6 +70,7 @@ function makeLogoPinElement(logoUrl: string, color: string, count: number, onCli
   pointer.style.cssText = `width:0;height:0;border-left:8px solid transparent;border-right:8px solid transparent;border-top:12px solid ${color};pointer-events:none;`;
   el.appendChild(pointer);
 
+  const labelHeight = 22; // margin-top(2) + content(~20)
   if (label) {
     const text = document.createElement('div');
     text.style.cssText = `margin-top:2px;background:${color};color:white;padding:2px 6px;border-radius:6px;font-size:11px;font-weight:700;white-space:nowrap;pointer-events:none;`;
@@ -79,7 +80,12 @@ function makeLogoPinElement(logoUrl: string, color: string, count: number, onCli
 
   el.addEventListener('click', (e) => { e.stopPropagation(); onClick(); });
 
-  return el;
+  // pin height = circle(48) + pointer(12) = 60; pointer tip is at bottom of pin
+  const pinHeight = 60;
+  const totalHeight = pinHeight + (label ? labelHeight : 0);
+  const yAnchor = 1 - (label ? labelHeight : 0) / totalHeight;
+
+  return { el, yAnchor };
 }
 
 export function KakaoMap({ stores, brands, verdict, selectedStoreId, highlightedStore, onStoreClick, onMapClick }: KakaoMapProps) {
@@ -169,12 +175,12 @@ export function KakaoMap({ stores, brands, verdict, selectedStoreId, highlighted
       const logoUrl = getBrandLogo(group, currentBrands);
       const label = (showLabel && group.length === 1) ? getShortName(primary.name) : undefined;
       if (logoUrl) {
-        const el = makeLogoPinElement(logoUrl, color, group.length, () => { onStoreClick(group[0]); }, label);
+        const { el, yAnchor } = makeLogoPinElement(logoUrl, color, group.length, () => { onStoreClick(group[0]); }, label);
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const overlay = new (kakao.maps as any).CustomOverlay({
           content: el,
           position,
-          yAnchor: 1.0,
+          yAnchor,
           zIndex: 5,
         });
         overlay.setMap(map);
