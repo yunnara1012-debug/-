@@ -21,10 +21,6 @@ function getShortName(name: string): string {
   return idx !== -1 ? name.slice(idx + 1) : (name.length > 5 ? name.slice(-4) : name);
 }
 
-function makePopup(html: string): string {
-  // pointer-events:none prevents the transparent padding area from blocking marker clicks
-  return `<div style="display:inline-block;padding-bottom:46px;pointer-events:none">${html}</div>`;
-}
 
 const BRAND_LOGOS: Record<string, string> = {
   '호랑이족발': '/logos/horangi.png',
@@ -49,17 +45,17 @@ function makeLogoPinElement(logoUrl: string, color: string, count: number, onCli
   el.style.cssText = 'position:relative;display:inline-flex;flex-direction:column;align-items:center;cursor:pointer;pointer-events:auto;filter:drop-shadow(0 3px 8px rgba(0,0,0,0.3))';
 
   const circle = document.createElement('div');
-  circle.style.cssText = `position:relative;width:48px;height:48px;border-radius:50%;border:3px solid ${color};overflow:hidden;background:white;flex-shrink:0;`;
+  circle.style.cssText = `position:relative;width:36px;height:36px;border-radius:50%;border:2px solid ${color};overflow:hidden;background:white;flex-shrink:0;`;
 
   const img = document.createElement('img');
   img.src = logoUrl;
-  img.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;pointer-events:none;';
+  img.style.cssText = 'width:100%;height:100%;object-fit:contain;display:block;pointer-events:none;';
   img.draggable = false;
   circle.appendChild(img);
 
   if (count > 1) {
     const badge = document.createElement('div');
-    badge.style.cssText = 'position:absolute;top:-3px;right:-3px;min-width:20px;height:20px;background:#EF4444;border-radius:10px;color:white;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;border:2px solid white;padding:0 3px;box-sizing:border-box;';
+    badge.style.cssText = 'position:absolute;top:-3px;right:-3px;min-width:16px;height:16px;background:#EF4444;border-radius:8px;color:white;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;border:2px solid white;padding:0 2px;box-sizing:border-box;';
     badge.textContent = String(count);
     circle.appendChild(badge);
   }
@@ -67,21 +63,21 @@ function makeLogoPinElement(logoUrl: string, color: string, count: number, onCli
   el.appendChild(circle);
 
   const pointer = document.createElement('div');
-  pointer.style.cssText = `width:0;height:0;border-left:8px solid transparent;border-right:8px solid transparent;border-top:12px solid ${color};pointer-events:none;`;
+  pointer.style.cssText = `width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:9px solid ${color};pointer-events:none;`;
   el.appendChild(pointer);
 
-  const labelHeight = 22; // margin-top(2) + content(~20)
+  const labelHeight = 20; // margin-top(2) + content(~18)
   if (label) {
     const text = document.createElement('div');
-    text.style.cssText = `margin-top:2px;background:${color};color:white;padding:2px 6px;border-radius:6px;font-size:11px;font-weight:700;white-space:nowrap;pointer-events:none;`;
+    text.style.cssText = `margin-top:2px;background:${color};color:white;padding:2px 5px;border-radius:5px;font-size:10px;font-weight:700;white-space:nowrap;pointer-events:none;`;
     text.textContent = label;
     el.appendChild(text);
   }
 
   el.addEventListener('click', (e) => { e.stopPropagation(); onClick(); });
 
-  // pin height = circle(48) + pointer(12) = 60; pointer tip is at bottom of pin
-  const pinHeight = 60;
+  // pin height = circle(36) + pointer(9) = 45; pointer tip is at bottom of pin
+  const pinHeight = 45;
   const totalHeight = pinHeight + (label ? labelHeight : 0);
   const yAnchor = 1 - (label ? labelHeight : 0) / totalHeight;
 
