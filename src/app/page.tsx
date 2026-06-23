@@ -124,7 +124,7 @@ export default function Home() {
 
   const handleStoreClick = useCallback((store: Store) => {
     setSelectedStore(store);
-    setHighlightedStore(null);
+    setHighlightedStore(store);
     setVerdict(null);
     if (typeof window !== 'undefined' && window.innerWidth < 768) setShowStoreList(false);
   }, []);

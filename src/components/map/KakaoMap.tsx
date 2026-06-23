@@ -352,35 +352,15 @@ export function KakaoMap({ stores, brands, verdict, selectedStoreId, highlighted
   }, [verdict]);
 
   useEffect(() => {
-    if (!mapRef.current) return;
-
-    if (!selectedStoreId) {
-      if (infoWindowRef.current) { infoWindowRef.current.setMap(null); infoWindowRef.current = null; }
-      return;
-    }
+    if (!mapRef.current || !selectedStoreId) return;
 
     const found = markersRef.current.find(({ stores }) => stores.some(s => s.id === selectedStoreId));
     if (!found) return;
 
-    const store = found.stores.find(s => s.id === selectedStoreId)!;
-
-    if (!store.name) return;
+    const store = found.stores.find(s => s.id === selectedStoreId);
+    if (!store) return;
 
     mapRef.current.panTo(new kakao.maps.LatLng(store.lat, store.lng));
-
-    const color = getStoreColor(store, brandsRef.current);
-    const bubble = `<div style="background:${color};color:white;padding:4px 10px;border-radius:12px;font-size:12px;font-weight:700;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,0.2)">${store.name}</div>`;
-
-    if (infoWindowRef.current) infoWindowRef.current.setMap(null);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const overlay = new (kakao.maps as any).CustomOverlay({
-      content: makePopup(bubble),
-      position: new kakao.maps.LatLng(store.lat, store.lng),
-      yAnchor: 1,
-      zIndex: 10,
-    });
-    overlay.setMap(mapRef.current);
-    infoWindowRef.current = overlay;
   }, [selectedStoreId]);
 
   useEffect(() => {
