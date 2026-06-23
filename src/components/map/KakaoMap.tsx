@@ -26,9 +26,58 @@ function makePopup(html: string): string {
   return `<div style="display:inline-block;padding-bottom:46px;pointer-events:none">${html}</div>`;
 }
 
+const BRAND_LOGOS: Record<string, string> = {
+  '호랑이족발': '/logos/horangi.png',
+  '천년아구찜': '/logos/chunnyeon.png',
+};
+
+function getBrandLogo(group: Store[], currentBrands: Brand[]): string | null {
+  for (const store of group) {
+    for (const brandId of store.brandIds) {
+      const brand = currentBrands.find(b => b.id === brandId);
+      if (brand) {
+        const key = brand.keyword || brand.name;
+        if (BRAND_LOGOS[key]) return BRAND_LOGOS[key];
+      }
+    }
+  }
+  return null;
+}
+
+function makeLogoPinElement(logoUrl: string, color: string, count: number, onClick: () => void): HTMLElement {
+  const el = document.createElement('div');
+  el.style.cssText = 'position:relative;display:inline-flex;flex-direction:column;align-items:center;cursor:pointer;pointer-events:auto;filter:drop-shadow(0 3px 8px rgba(0,0,0,0.3))';
+
+  const circle = document.createElement('div');
+  circle.style.cssText = `position:relative;width:48px;height:48px;border-radius:50%;border:3px solid ${color};overflow:hidden;background:white;flex-shrink:0;`;
+
+  const img = document.createElement('img');
+  img.src = logoUrl;
+  img.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;pointer-events:none;';
+  img.draggable = false;
+  circle.appendChild(img);
+
+  if (count > 1) {
+    const badge = document.createElement('div');
+    badge.style.cssText = 'position:absolute;top:-3px;right:-3px;min-width:20px;height:20px;background:#EF4444;border-radius:10px;color:white;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;border:2px solid white;padding:0 3px;box-sizing:border-box;';
+    badge.textContent = String(count);
+    circle.appendChild(badge);
+  }
+
+  el.appendChild(circle);
+
+  const pointer = document.createElement('div');
+  pointer.style.cssText = `width:0;height:0;border-left:8px solid transparent;border-right:8px solid transparent;border-top:12px solid ${color};pointer-events:none;`;
+  el.appendChild(pointer);
+
+  el.addEventListener('click', (e) => { e.stopPropagation(); onClick(); });
+
+  return el;
+}
+
 export function KakaoMap({ stores, brands, verdict, selectedStoreId, highlightedStore, onStoreClick, onMapClick }: KakaoMapProps) {
   const mapRef = useRef<kakao.maps.Map | null>(null);
-  const markersRef = useRef<{ marker: kakao.maps.Marker; stores: Store[] }[]>([]);
+  const markersRef = useRef<{ remove: () => void; stores: Store[] }[]>([]);
   const circlesRef = useRef<kakao.maps.Circle[]>([]);
   const verdictMarkerRef = useRef<kakao.maps.Marker | null>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -47,7 +96,7 @@ export function KakaoMap({ stores, brands, verdict, selectedStoreId, highlighted
   useEffect(() => { brandsRef.current = brands; }, [brands]);
 
   const clearOverlays = useCallback(() => {
-    markersRef.current.forEach(({ marker }) => marker.setMap(null));
+    markersRef.current.forEach(({ remove }) => remove());
     markersRef.current = [];
     circlesRef.current.forEach(c => c.setMap(null));
     circlesRef.current = [];
@@ -93,7 +142,7 @@ export function KakaoMap({ stores, brands, verdict, selectedStoreId, highlighted
   }, []);
 
   const renderStores = useCallback((map: kakao.maps.Map, storeList: Store[], currentBrands: Brand[], zoom = 8, highlightId?: string) => {
-    markersRef.current.forEach(({ marker }) => marker.setMap(null));
+    markersRef.current.forEach(({ remove }) => remove());
     markersRef.current = [];
     circlesRef.current.forEach(c => c.setMap(null));
     circlesRef.current = [];
@@ -108,55 +157,49 @@ export function KakaoMap({ stores, brands, verdict, selectedStoreId, highlighted
       )[0];
       const isHighlighted = highlightId ? group.some(s => s.id === highlightId) : false;
       const color = isHighlighted ? '#EC4899' : getStoreColor(primary, currentBrands);
-      const label = (showLabel && group.length === 1) ? getShortName(primary.name) : undefined;
-      const svgUrl = makeMarkerSvg(color, group.length, label);
+      const position = new kakao.maps.LatLng(primary.lat, primary.lng);
 
-      let mw: number, mh: number, ox: number, oy: number;
-      if (label) {
-        [mw, mh, ox, oy] = [52, 58, 26, 40];
-      } else if (group.length > 1) {
-        [mw, mh, ox, oy] = isHighlighted ? [38, 48, 19, 48] : [32, 40, 16, 40];
-      } else {
-        [mw, mh, ox, oy] = isHighlighted ? [32, 42, 16, 42] : [26, 34, 13, 34];
-      }
-
-      const markerImage = new kakao.maps.MarkerImage(
-        svgUrl,
-        new kakao.maps.Size(mw, mh),
-        { offset: new kakao.maps.Point(ox, oy) }
-      );
-
-      const marker = new kakao.maps.Marker({
-        map,
-        position: new kakao.maps.LatLng(primary.lat, primary.lng),
-        image: markerImage,
-        zIndex: 5,
-      });
-
-      kakao.maps.event.addListener(marker, 'click', () => {
-        if (hoverIwRef.current) { hoverIwRef.current.setMap(null); hoverIwRef.current = null; }
-        onStoreClick(group[0]);
-      });
-
-      kakao.maps.event.addListener(marker, 'mouseover', () => {
-        if (hoverIwRef.current) { hoverIwRef.current.setMap(null); hoverIwRef.current = null; }
-        const names = group.map(s => s.name).join('<br>');
-        const bubble = `<div style="background:#1f2937;color:white;padding:4px 10px;border-radius:8px;font-size:12px;font-weight:600;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,0.25);pointer-events:none">${names}</div>`;
+      const logoUrl = getBrandLogo(group, currentBrands);
+      if (logoUrl) {
+        const el = makeLogoPinElement(logoUrl, color, group.length, () => { onStoreClick(group[0]); });
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const overlay = new (kakao.maps as any).CustomOverlay({
-          content: makePopup(bubble),
-          position: marker.getPosition(),
-          yAnchor: 1,
-          zIndex: 10,
+          content: el,
+          position,
+          yAnchor: 1.0,
+          zIndex: 5,
         });
         overlay.setMap(map);
-        hoverIwRef.current = overlay;
-      });
-      kakao.maps.event.addListener(marker, 'mouseout', () => {
-        if (hoverIwRef.current) { hoverIwRef.current.setMap(null); hoverIwRef.current = null; }
-      });
+        markersRef.current.push({ remove: () => overlay.setMap(null), stores: group });
+      } else {
+        const label = (showLabel && group.length === 1) ? getShortName(primary.name) : undefined;
+        const svgUrl = makeMarkerSvg(color, group.length, label);
 
-      markersRef.current.push({ marker, stores: group });
+        let mw: number, mh: number, ox: number, oy: number;
+        if (label) {
+          [mw, mh, ox, oy] = [52, 58, 26, 40];
+        } else if (group.length > 1) {
+          [mw, mh, ox, oy] = isHighlighted ? [38, 48, 19, 48] : [32, 40, 16, 40];
+        } else {
+          [mw, mh, ox, oy] = isHighlighted ? [32, 42, 16, 42] : [26, 34, 13, 34];
+        }
+
+        const markerImage = new kakao.maps.MarkerImage(
+          svgUrl,
+          new kakao.maps.Size(mw, mh),
+          { offset: new kakao.maps.Point(ox, oy) }
+        );
+
+        const marker = new kakao.maps.Marker({
+          map,
+          position,
+          image: markerImage,
+          zIndex: 5,
+        });
+
+        kakao.maps.event.addListener(marker, 'click', () => { onStoreClick(group[0]); });
+        markersRef.current.push({ remove: () => marker.setMap(null), stores: group });
+      }
 
       for (const store of group) {
         if (store.status === 'closed') continue;
