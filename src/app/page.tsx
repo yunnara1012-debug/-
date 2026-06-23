@@ -128,7 +128,7 @@ export default function Home() {
   }, []);
 
   const handleAddStore = useCallback(() => {
-    const brandId = selectedBrandId === 'all' ? (brands[0]?.id ?? '') : selectedBrandId;
+    const brandId = selectedBrandId === 'all' ? null : selectedBrandId;
     const newStore: Store = {
       id: 'new-' + Date.now(),
       name: '',

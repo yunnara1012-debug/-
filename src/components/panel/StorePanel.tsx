@@ -155,7 +155,19 @@ export function StorePanel({ store, brands, allStores, onUpdate, onDelete, onClo
             <input
               autoFocus={isNew}
               value={form.name}
-              onChange={e => set('name', e.target.value)}
+              onChange={e => {
+                const newName = e.target.value;
+                const autoIds = brands
+                  .filter(b => b.keyword && newName.includes(b.keyword))
+                  .map(b => b.id);
+                setForm(prev => ({
+                  ...prev,
+                  name: newName,
+                  brandIds: autoIds.length > 0
+                    ? [...new Set([...prev.brandIds, ...autoIds])]
+                    : prev.brandIds,
+                }));
+              }}
               placeholder="지점명 입력"
               className="flex-1 min-w-0 font-semibold text-gray-800 text-base outline-none bg-transparent border-b border-gray-300 focus:border-blue-400"
             />
