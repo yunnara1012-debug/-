@@ -44,7 +44,7 @@ function getBrandLogo(group: Store[], currentBrands: Brand[]): string | null {
   return null;
 }
 
-function makeLogoPinElement(logoUrl: string, color: string, count: number, onClick: () => void): HTMLElement {
+function makeLogoPinElement(logoUrl: string, color: string, count: number, onClick: () => void, label?: string): HTMLElement {
   const el = document.createElement('div');
   el.style.cssText = 'position:relative;display:inline-flex;flex-direction:column;align-items:center;cursor:pointer;pointer-events:auto;filter:drop-shadow(0 3px 8px rgba(0,0,0,0.3))';
 
@@ -69,6 +69,13 @@ function makeLogoPinElement(logoUrl: string, color: string, count: number, onCli
   const pointer = document.createElement('div');
   pointer.style.cssText = `width:0;height:0;border-left:8px solid transparent;border-right:8px solid transparent;border-top:12px solid ${color};pointer-events:none;`;
   el.appendChild(pointer);
+
+  if (label) {
+    const text = document.createElement('div');
+    text.style.cssText = `margin-top:2px;background:${color};color:white;padding:2px 6px;border-radius:6px;font-size:11px;font-weight:700;white-space:nowrap;pointer-events:none;`;
+    text.textContent = label;
+    el.appendChild(text);
+  }
 
   el.addEventListener('click', (e) => { e.stopPropagation(); onClick(); });
 
@@ -160,8 +167,9 @@ export function KakaoMap({ stores, brands, verdict, selectedStoreId, highlighted
       const position = new kakao.maps.LatLng(primary.lat, primary.lng);
 
       const logoUrl = getBrandLogo(group, currentBrands);
+      const label = (showLabel && group.length === 1) ? getShortName(primary.name) : undefined;
       if (logoUrl) {
-        const el = makeLogoPinElement(logoUrl, color, group.length, () => { onStoreClick(group[0]); });
+        const el = makeLogoPinElement(logoUrl, color, group.length, () => { onStoreClick(group[0]); }, label);
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const overlay = new (kakao.maps as any).CustomOverlay({
           content: el,
@@ -172,7 +180,6 @@ export function KakaoMap({ stores, brands, verdict, selectedStoreId, highlighted
         overlay.setMap(map);
         markersRef.current.push({ remove: () => overlay.setMap(null), stores: group });
       } else {
-        const label = (showLabel && group.length === 1) ? getShortName(primary.name) : undefined;
         const svgUrl = makeMarkerSvg(color, group.length, label);
 
         let mw: number, mh: number, ox: number, oy: number;
