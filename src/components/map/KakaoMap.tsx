@@ -12,6 +12,7 @@ interface KakaoMapProps {
   verdict: VerdictResult | null;
   selectedStoreId?: string;
   onStoreClick: (store: Store) => void;
+  onMapClick?: () => void;
 }
 
 function getShortName(name: string): string {
@@ -24,7 +25,7 @@ function makePopup(html: string): string {
   return `<div style="display:inline-block;padding-bottom:46px;pointer-events:none">${html}</div>`;
 }
 
-export function KakaoMap({ stores, brands, verdict, selectedStoreId, onStoreClick }: KakaoMapProps) {
+export function KakaoMap({ stores, brands, verdict, selectedStoreId, onStoreClick, onMapClick }: KakaoMapProps) {
   const mapRef = useRef<kakao.maps.Map | null>(null);
   const markersRef = useRef<{ marker: kakao.maps.Marker; stores: Store[] }[]>([]);
   const circlesRef = useRef<kakao.maps.Circle[]>([]);
@@ -131,13 +132,14 @@ export function KakaoMap({ stores, brands, verdict, selectedStoreId, onStoreClic
       });
 
       kakao.maps.event.addListener(marker, 'click', () => {
+        if (hoverIwRef.current) { hoverIwRef.current.setMap(null); hoverIwRef.current = null; }
         onStoreClick(group[0]);
       });
 
       kakao.maps.event.addListener(marker, 'mouseover', () => {
         if (hoverIwRef.current) { hoverIwRef.current.setMap(null); hoverIwRef.current = null; }
         const names = group.map(s => s.name).join('<br>');
-        const bubble = `<div style="background:#1f2937;color:white;padding:4px 10px;border-radius:8px;font-size:12px;font-weight:600;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,0.25)">${names}</div>`;
+        const bubble = `<div style="background:#1f2937;color:white;padding:4px 10px;border-radius:8px;font-size:12px;font-weight:600;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,0.25);pointer-events:none">${names}</div>`;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const overlay = new (kakao.maps as any).CustomOverlay({
           content: makePopup(bubble),
@@ -176,6 +178,9 @@ export function KakaoMap({ stores, brands, verdict, selectedStoreId, onStoreClic
   const renderStoresRef = useRef(renderStores);
   useEffect(() => { renderStoresRef.current = renderStores; }, [renderStores]);
 
+  const onMapClickRef = useRef(onMapClick);
+  useEffect(() => { onMapClickRef.current = onMapClick; }, [onMapClick]);
+
   useEffect(() => {
     if (!containerRef.current) return;
 
@@ -190,6 +195,9 @@ export function KakaoMap({ stores, brands, verdict, selectedStoreId, onStoreClic
         mapRef.current = map;
         kakao.maps.event.addListener(map, 'zoom_changed', () => {
           setMapZoom(map.getLevel());
+        });
+        kakao.maps.event.addListener(map, 'click', () => {
+          onMapClickRef.current?.();
         });
         renderStores(map, storesRef.current, brandsRef.current, 8);
       });

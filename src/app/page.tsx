@@ -357,6 +357,7 @@ export default function Home() {
           verdict={verdict}
           selectedStoreId={selectedStore?.id}
           onStoreClick={handleStoreClick}
+          onMapClick={handleClosePanel}
         />
 
         {/* Verdict Panel */}
