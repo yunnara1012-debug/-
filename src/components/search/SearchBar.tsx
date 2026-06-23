@@ -2,21 +2,24 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import type { Store, VerdictResult } from '@/types';
 import { haversineDistance } from '@/lib/geo/distance';
-import { Search, X } from 'lucide-react';
+import { Search, X, Building2, MapPin } from 'lucide-react';
 
 interface Props {
   stores: Store[];
   onVerdict: (result: VerdictResult) => void;
+  onSelectStore?: (store: Store) => void;
 }
 
 interface Suggestion {
+  type: 'store' | 'place';
   placeName: string;
   address: string;
   lat: number;
   lng: number;
+  store?: Store;
 }
 
-export function SearchBar({ stores, onVerdict }: Props) {
+export function SearchBar({ stores, onVerdict, onSelectStore }: Props) {
   const [query, setQuery] = useState('');
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [loading, setLoading] = useState(false);
@@ -32,6 +35,7 @@ export function SearchBar({ stores, onVerdict }: Props) {
       geocoder.addressSearch(q, (result, status) => {
         if (status === kakao.maps.services.Status.OK && result.length > 0) {
           resolve(result.slice(0, 5).map(r => ({
+            type: 'place' as const,
             placeName: r.address_name,
             address: r.road_address?.address_name ?? r.address_name,
             lat: parseFloat(r.y),
@@ -42,6 +46,7 @@ export function SearchBar({ stores, onVerdict }: Props) {
           ps.keywordSearch(q, (places, pStatus) => {
             if (pStatus === kakao.maps.services.Status.OK) {
               resolve(places.slice(0, 5).map(p => ({
+                type: 'place' as const,
                 placeName: p.place_name,
                 address: p.road_address_name || p.address_name,
                 lat: parseFloat(p.y),
@@ -70,12 +75,19 @@ export function SearchBar({ stores, onVerdict }: Props) {
     if (!query.trim()) { setSuggestions([]); return; }
     clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(async () => {
-      const results = await searchKakao(query);
-      setSuggestions(results);
-      setShowSuggestions(results.length > 0);
+      const q = query.trim().toLowerCase();
+      const storeMatches: Suggestion[] = stores
+        .filter(s => s.name.toLowerCase().includes(q) || s.address.toLowerCase().includes(q))
+        .slice(0, 4)
+        .map(s => ({ type: 'store' as const, placeName: s.name, address: s.address, lat: s.lat, lng: s.lng, store: s }));
+
+      const kakaoResults = await searchKakao(query);
+      const all = [...storeMatches, ...kakaoResults].slice(0, 7);
+      setSuggestions(all);
+      setShowSuggestions(all.length > 0);
     }, 300);
     return () => clearTimeout(debounceRef.current);
-  }, [query, searchKakao]);
+  }, [query, searchKakao, stores]);
 
   const executeVerdict = useCallback((lat: number, lng: number, placeName?: string, address?: string) => {
     setLoading(true);
@@ -120,18 +132,27 @@ export function SearchBar({ stores, onVerdict }: Props) {
     });
   }, [stores, onVerdict]);
 
-  const handleSelectSuggestion = (s: Suggestion) => {
+  const handleSelectSuggestion = useCallback((s: Suggestion) => {
     setQuery(s.placeName || s.address);
     setSuggestions([]);
     setShowSuggestions(false);
-    executeVerdict(s.lat, s.lng, s.placeName, s.address);
-  };
+    if (s.type === 'store' && s.store && onSelectStore) {
+      onSelectStore(s.store);
+    } else {
+      executeVerdict(s.lat, s.lng, s.placeName, s.address);
+    }
+  }, [onSelectStore, executeVerdict]);
 
   const handleSearch = () => {
     if (!query.trim()) return;
     clearTimeout(debounceRef.current);
+    const current = suggestions;
     setSuggestions([]);
     setShowSuggestions(false);
+    if (current.length > 0) {
+      handleSelectSuggestion(current[0]);
+      return;
+    }
     setLoading(true);
     searchKakao(query).then(results => {
       if (results.length > 0) handleSelectSuggestion(results[0]);
@@ -167,15 +188,28 @@ export function SearchBar({ stores, onVerdict }: Props) {
       </div>
 
       {showSuggestions && suggestions.length > 0 && (
-        <div className="absolute top-full left-0 right-0 mt-1 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden z-50 max-h-60 overflow-y-auto">
+        <div className="absolute top-full left-0 right-0 mt-1 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden z-50 max-h-72 overflow-y-auto">
           {suggestions.map((s, i) => (
             <button
               key={i}
               onClick={() => handleSelectSuggestion(s)}
-              className="w-full text-left px-4 py-3 hover:bg-gray-50 border-b border-gray-50 last:border-0"
+              className={`w-full text-left px-4 py-3 hover:bg-gray-50 border-b border-gray-50 last:border-0 flex items-start gap-3 ${
+                s.type === 'store' ? 'bg-blue-50/40' : ''
+              }`}
             >
-              <div className="text-sm font-medium text-gray-800">{s.placeName}</div>
-              <div className="text-xs text-gray-500 mt-0.5">{s.address}</div>
+              <div className={`flex-none mt-0.5 p-1 rounded ${s.type === 'store' ? 'bg-blue-100' : 'bg-gray-100'}`}>
+                {s.type === 'store'
+                  ? <Building2 size={12} className="text-blue-600" />
+                  : <MapPin size={12} className="text-gray-500" />
+                }
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-medium text-gray-800 truncate">{s.placeName}</div>
+                <div className="text-xs text-gray-500 mt-0.5 truncate">{s.address}</div>
+              </div>
+              {s.type === 'store' && (
+                <span className="flex-none text-xs font-semibold text-blue-600 bg-blue-100 px-1.5 py-0.5 rounded">지점</span>
+              )}
             </button>
           ))}
         </div>

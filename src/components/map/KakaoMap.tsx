@@ -11,6 +11,7 @@ interface KakaoMapProps {
   selectedBrandId: string;
   verdict: VerdictResult | null;
   selectedStoreId?: string;
+  highlightedStore?: Store | null;
   onStoreClick: (store: Store) => void;
   onMapClick?: () => void;
 }
@@ -25,7 +26,7 @@ function makePopup(html: string): string {
   return `<div style="display:inline-block;padding-bottom:46px;pointer-events:none">${html}</div>`;
 }
 
-export function KakaoMap({ stores, brands, verdict, selectedStoreId, onStoreClick, onMapClick }: KakaoMapProps) {
+export function KakaoMap({ stores, brands, verdict, selectedStoreId, highlightedStore, onStoreClick, onMapClick }: KakaoMapProps) {
   const mapRef = useRef<kakao.maps.Map | null>(null);
   const markersRef = useRef<{ marker: kakao.maps.Marker; stores: Store[] }[]>([]);
   const circlesRef = useRef<kakao.maps.Circle[]>([]);
@@ -91,7 +92,7 @@ export function KakaoMap({ stores, brands, verdict, selectedStoreId, onStoreClic
     return groups;
   }, []);
 
-  const renderStores = useCallback((map: kakao.maps.Map, storeList: Store[], currentBrands: Brand[], zoom = 8) => {
+  const renderStores = useCallback((map: kakao.maps.Map, storeList: Store[], currentBrands: Brand[], zoom = 8, highlightId?: string) => {
     markersRef.current.forEach(({ marker }) => marker.setMap(null));
     markersRef.current = [];
     circlesRef.current.forEach(c => c.setMap(null));
@@ -105,7 +106,8 @@ export function KakaoMap({ stores, brands, verdict, selectedStoreId, onStoreClic
       const primary = [...group].sort(
         (a, b) => statusOrder.indexOf(a.status) - statusOrder.indexOf(b.status)
       )[0];
-      const color = getStoreColor(primary, currentBrands);
+      const isHighlighted = highlightId ? group.some(s => s.id === highlightId) : false;
+      const color = isHighlighted ? '#EC4899' : getStoreColor(primary, currentBrands);
       const label = (showLabel && group.length === 1) ? getShortName(primary.name) : undefined;
       const svgUrl = makeMarkerSvg(color, group.length, label);
 
@@ -113,9 +115,9 @@ export function KakaoMap({ stores, brands, verdict, selectedStoreId, onStoreClic
       if (label) {
         [mw, mh, ox, oy] = [52, 58, 26, 40];
       } else if (group.length > 1) {
-        [mw, mh, ox, oy] = [32, 40, 16, 40];
+        [mw, mh, ox, oy] = isHighlighted ? [38, 48, 19, 48] : [32, 40, 16, 40];
       } else {
-        [mw, mh, ox, oy] = [26, 34, 13, 34];
+        [mw, mh, ox, oy] = isHighlighted ? [32, 42, 16, 42] : [26, 34, 13, 34];
       }
 
       const markerImage = new kakao.maps.MarkerImage(
@@ -221,9 +223,15 @@ export function KakaoMap({ stores, brands, verdict, selectedStoreId, onStoreClic
   }, []);
 
   useEffect(() => {
+    if (!mapRef.current || !highlightedStore) return;
+    if (typeof kakao === 'undefined') return;
+    mapRef.current.panTo(new kakao.maps.LatLng(highlightedStore.lat, highlightedStore.lng));
+  }, [highlightedStore]);
+
+  useEffect(() => {
     if (!mapRef.current) return;
-    renderStores(mapRef.current, stores, brands, mapZoom);
-  }, [stores, brands, renderStores, mapZoom]);
+    renderStores(mapRef.current, stores, brands, mapZoom, highlightedStore?.id);
+  }, [stores, brands, renderStores, mapZoom, highlightedStore]);
 
   useEffect(() => {
     if (!mapRef.current) return;

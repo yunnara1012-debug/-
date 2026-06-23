@@ -54,6 +54,7 @@ export default function Home() {
   const [stores, setStores] = useState<Store[]>(() => loadFromStorage('fm-stores', INITIAL_STORES));
   const [selectedBrandId, setSelectedBrandId] = useState('all');
   const [selectedStore, setSelectedStore] = useState<Store | null>(null);
+  const [highlightedStore, setHighlightedStore] = useState<Store | null>(null);
   const [verdict, setVerdict] = useState<VerdictResult | null>(null);
   const [showImportPanel, setShowImportPanel] = useState(false);
   const [showStoreList, setShowStoreList] = useState(false);
@@ -123,8 +124,14 @@ export default function Home() {
 
   const handleStoreClick = useCallback((store: Store) => {
     setSelectedStore(store);
+    setHighlightedStore(null);
     setVerdict(null);
     if (typeof window !== 'undefined' && window.innerWidth < 768) setShowStoreList(false);
+  }, []);
+
+  const handleHighlightStore = useCallback((store: Store) => {
+    setHighlightedStore(store);
+    setSelectedStore(null);
   }, []);
 
   const handleAddStore = useCallback(() => {
@@ -172,6 +179,7 @@ export default function Home() {
 
   const handleClosePanel = useCallback(() => {
     setSelectedStore(null);
+    setHighlightedStore(null);
   }, []);
 
   return (
@@ -187,7 +195,7 @@ export default function Home() {
 
           {/* 검색창 - 데스크톱만 */}
           <div className="hidden md:block flex-1 min-w-0">
-            <SearchBar stores={selectedBrandStores} onVerdict={handleVerdict} />
+            <SearchBar stores={selectedBrandStores} onVerdict={handleVerdict} onSelectStore={handleHighlightStore} />
           </div>
 
           {/* 모바일 스페이서 */}
@@ -265,7 +273,7 @@ export default function Home() {
 
         {/* 검색창 - 모바일만 */}
         <div className="md:hidden px-3 pb-2">
-          <SearchBar stores={selectedBrandStores} onVerdict={handleVerdict} />
+          <SearchBar stores={selectedBrandStores} onVerdict={handleVerdict} onSelectStore={handleHighlightStore} />
         </div>
 
         {/* 필터 행 */}
@@ -356,6 +364,7 @@ export default function Home() {
           selectedBrandId={selectedBrandId}
           verdict={verdict}
           selectedStoreId={selectedStore?.id}
+          highlightedStore={highlightedStore}
           onStoreClick={handleStoreClick}
           onMapClick={handleClosePanel}
         />
@@ -374,7 +383,7 @@ export default function Home() {
           <StoreListPanel
             stores={displayedStores}
             brands={brands}
-            onSelectStore={(store) => { setSelectedStore(store); setVerdict(null); }}
+            onSelectStore={handleHighlightStore}
             onClose={() => setShowStoreList(false)}
           />
         )}
