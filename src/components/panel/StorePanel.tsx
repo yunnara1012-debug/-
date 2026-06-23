@@ -346,8 +346,17 @@ export function StorePanel({ store, brands, allStores, onUpdate, onDelete, onClo
           </button>
         </div>
       ) : (
-        <div className="flex-none px-4 py-3 border-t border-gray-100">
-          <button onClick={() => setEditing(true)} className="w-full py-2.5 bg-blue-500 hover:bg-blue-600 text-white text-sm font-semibold rounded-xl transition-colors flex items-center justify-center gap-1">
+        <div className="flex-none px-4 py-3 border-t border-gray-100 flex gap-2">
+          <button
+            onClick={() => { if (isNew) onDelete(store.id); onClose(); }}
+            className="md:hidden flex-1 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-600 text-sm font-semibold rounded-xl transition-colors flex items-center justify-center gap-1"
+          >
+            <X size={15} />닫기
+          </button>
+          <button
+            onClick={() => setEditing(true)}
+            className="flex-1 py-2.5 bg-blue-500 hover:bg-blue-600 text-white text-sm font-semibold rounded-xl transition-colors flex items-center justify-center gap-1"
+          >
             <Edit3 size={15} />수정
           </button>
         </div>
