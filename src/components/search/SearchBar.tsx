@@ -59,26 +59,33 @@ export function SearchBar({ stores, onVerdict, onSelectStore }: Props) {
           lng: parseFloat(r.x),
         }));
 
-      const toSugg = (places: kakao.maps.services.PlacesSearchResult[]) =>
-        places.slice(0, 5).map(p => ({
+      // 키워드 결과 중 주소에 검색어 토큰이 포함된 것만 사용 (엉뚱한 지역 차단)
+      const toSugg = (places: kakao.maps.services.PlacesSearchResult[], queryTokens: string[]) => {
+        const filtered = places.filter(p => {
+          const addr = (p.address_name || p.road_address_name || '').toLowerCase();
+          return queryTokens.some(t => t.length >= 2 && addr.includes(t));
+        });
+        return (filtered.length > 0 ? filtered : places).slice(0, 5).map(p => ({
           type: 'place' as const,
           placeName: p.place_name,
           address: p.road_address_name || p.address_name,
           lat: parseFloat(p.y),
           lng: parseFloat(p.x),
         }));
+      };
 
-      // 앞 토큰 제거 체인: "경기도 군포" → "군포"
-      const tokens = normalized.split(/\s+/);
-      const chain = tokens.map((_, i) => tokens.slice(i).join(' '));
+      const normTokens = normalized.toLowerCase().split(/\s+/);
 
-      const tryChain = (index: number) => {
-        if (index >= chain.length) { resolve([]); return; }
-        ps.keywordSearch(chain[index], (places, pStatus) => {
+      const tryKeyword = (keyword: string, fallbackKeyword?: string) => {
+        ps.keywordSearch(keyword, (places, pStatus) => {
           if (pStatus === kakao.maps.services.Status.OK && places.length > 0) {
-            resolve(toSugg(places));
+            const sugg = toSugg(places, normTokens);
+            if (sugg.length > 0) { resolve(sugg); return; }
+          }
+          if (fallbackKeyword) {
+            tryKeyword(fallbackKeyword);
           } else {
-            tryChain(index + 1);
+            resolve([]);
           }
         });
       };
@@ -88,16 +95,19 @@ export function SearchBar({ stores, onVerdict, onSelectStore }: Props) {
         if (status === kakao.maps.services.Status.OK && result.length > 0) {
           resolve(toAddrSugg(result));
         } else if (normalized !== q.trim()) {
-          // 2) 원본 그대로 addressSearch (이미 완전한 주소일 경우)
+          // 2) 원본 그대로 addressSearch
           geocoder.addressSearch(q.trim(), (result2, status2) => {
             if (status2 === kakao.maps.services.Status.OK && result2.length > 0) {
               resolve(toAddrSugg(result2));
             } else {
-              tryChain(0);
+              // 3) 키워드 검색 (정규화 → 마지막 토큰 순)
+              const last = normTokens[normTokens.length - 1];
+              tryKeyword(normalized, last !== normalized ? last : undefined);
             }
           });
         } else {
-          tryChain(0);
+          const last = normTokens[normTokens.length - 1];
+          tryKeyword(normalized, last !== normalized ? last : undefined);
         }
       });
     });
