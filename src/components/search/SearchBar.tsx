@@ -59,21 +59,35 @@ export function SearchBar({ stores, onVerdict, onSelectStore }: Props) {
           lng: parseFloat(r.x),
         }));
 
-      // 키워드 결과 중 주소에 검색어 토큰이 포함된 것만 사용 (엉뚱한 지역 차단)
+      // 키워드 결과 필터: 주소형(경기도 군포시)과 장소명형(성신여대, 강남역)을 구분
       const toSugg = (places: kakao.maps.services.PlacesSearchResult[], queryTokens: string[]) => {
         const tokens = queryTokens.filter(t => t.length >= 2);
         const lastToken = tokens[tokens.length - 1];
-        // 모든 토큰이 주소에 포함된 결과 우선 (경기도 군포시 → 둘 다 포함)
-        const strict = places.filter(p => {
-          const addr = (p.address_name || p.road_address_name || '').toLowerCase();
-          return tokens.every(t => addr.includes(t));
-        });
-        // strict 결과 없으면 마지막 토큰(가장 구체적)으로만 필터
-        const result = strict.length > 0 ? strict : places.filter(p => {
-          const addr = (p.address_name || p.road_address_name || '').toLowerCase();
-          return lastToken && addr.includes(lastToken);
-        });
-        // 관련 없는 지역 결과 차단: 필터 통과 결과만 반환 (없으면 빈 배열)
+        // 토큰이 행정구역 단위로 끝나면 주소 검색 (도/시/군/구/읍/면/동/로/길)
+        const isAddrQuery = tokens.some(t => /[도시군구읍면동로길]$/.test(t));
+
+        let result: kakao.maps.services.PlacesSearchResult[];
+        if (isAddrQuery) {
+          // 주소형: 주소에 모든 토큰 포함 요구, 안되면 마지막 토큰만
+          const strict = places.filter(p => {
+            const addr = (p.address_name || p.road_address_name || '').toLowerCase();
+            return tokens.every(t => addr.includes(t));
+          });
+          result = strict.length > 0 ? strict : places.filter(p => {
+            const addr = (p.address_name || p.road_address_name || '').toLowerCase();
+            return lastToken && addr.includes(lastToken);
+          });
+          // 주소형은 관련 없는 지역 완전 차단 (빈 배열 허용)
+        } else {
+          // 장소명형(성신여대, 강남역, 홍대 등): 장소명에 토큰 포함 여부 확인
+          const nameMatch = places.filter(p => {
+            const name = (p.place_name || '').toLowerCase();
+            return tokens.some(t => name.includes(t));
+          });
+          // 장소명 매칭 없으면 카카오 결과 그대로 사용 (카카오가 이미 관련성 처리)
+          result = nameMatch.length > 0 ? nameMatch : places;
+        }
+
         return result.slice(0, 5).map(p => ({
           type: 'place' as const,
           placeName: p.place_name,
