@@ -62,18 +62,19 @@ export function SearchBar({ stores, onVerdict, onSelectStore }: Props) {
       // 키워드 결과 중 주소에 검색어 토큰이 포함된 것만 사용 (엉뚱한 지역 차단)
       const toSugg = (places: kakao.maps.services.PlacesSearchResult[], queryTokens: string[]) => {
         const tokens = queryTokens.filter(t => t.length >= 2);
-        // 모든 토큰이 주소에 포함된 결과 우선 (경기도 군포시 → 둘 다 포함해야)
+        const lastToken = tokens[tokens.length - 1];
+        // 모든 토큰이 주소에 포함된 결과 우선 (경기도 군포시 → 둘 다 포함)
         const strict = places.filter(p => {
           const addr = (p.address_name || p.road_address_name || '').toLowerCase();
           return tokens.every(t => addr.includes(t));
         });
         // strict 결과 없으면 마지막 토큰(가장 구체적)으로만 필터
-        const lastToken = tokens[tokens.length - 1];
-        const loose = strict.length > 0 ? strict : places.filter(p => {
+        const result = strict.length > 0 ? strict : places.filter(p => {
           const addr = (p.address_name || p.road_address_name || '').toLowerCase();
           return lastToken && addr.includes(lastToken);
         });
-        return (loose.length > 0 ? loose : places).slice(0, 5).map(p => ({
+        // 관련 없는 지역 결과 차단: 필터 통과 결과만 반환 (없으면 빈 배열)
+        return result.slice(0, 5).map(p => ({
           type: 'place' as const,
           placeName: p.place_name,
           address: p.road_address_name || p.address_name,
