@@ -60,6 +60,25 @@ function formatPhone(value: string): string {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 declare const kakao: any;
 
+function getAddressVariants(address: string): Promise<{ road?: string; jibun?: string }> {
+  return new Promise(resolve => {
+    if (!address || typeof kakao === 'undefined') { resolve({}); return; }
+    const geocoder = new kakao.maps.services.Geocoder();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    geocoder.addressSearch(address, (result: any[], status: kakao.maps.services.Status) => {
+      if (status === kakao.maps.services.Status.OK && result.length > 0) {
+        const r = result[0];
+        resolve({
+          road: r.road_address?.address_name ?? undefined,
+          jibun: r.address?.address_name ?? undefined,
+        });
+      } else {
+        resolve({});
+      }
+    });
+  });
+}
+
 function geocodeAddress(address: string): Promise<{ lat: number; lng: number } | null> {
   return new Promise(resolve => {
     if (!address || typeof kakao === 'undefined') { resolve(null); return; }
@@ -89,11 +108,18 @@ export function StorePanel({ store, brands, allStores, onUpdate, onDelete, onClo
   const [form, setForm] = useState<Store>({ ...store });
   const [saving, setSaving] = useState(false);
   const [geocoding, setGeocoding] = useState(false);
+  const [addrVariants, setAddrVariants] = useState<{ road?: string; jibun?: string } | null>(null);
 
   useEffect(() => {
     setForm({ ...store });
     setEditing(store.name === '');
   }, [store.id, store]);
+
+  useEffect(() => {
+    setAddrVariants(null);
+    if (!store.address) return;
+    getAddressVariants(store.address).then(setAddrVariants);
+  }, [store.id, store.address]);
 
   const { canOpen, nearestDistance, nearestName } = computeCanOpen(form, allStores);
   const storeColor = getStoreColor(form, brands);
@@ -272,7 +298,21 @@ export function StorePanel({ store, brands, allStores, onUpdate, onDelete, onClo
                 </button>
               </div>
             ) : (
-              <div className="text-sm text-gray-800">{form.address || '-'}</div>
+              <div className="text-sm text-gray-800">
+                {form.address ? (
+                  addrVariants ? (
+                    <div className="space-y-0.5">
+                      {addrVariants.road && (
+                        <div><span className="text-xs text-gray-400 mr-1">도로명</span>{addrVariants.road}</div>
+                      )}
+                      {addrVariants.jibun && (
+                        <div><span className="text-xs text-gray-400 mr-1">지번&nbsp;&nbsp;</span>{addrVariants.jibun}</div>
+                      )}
+                      {!addrVariants.road && !addrVariants.jibun && form.address}
+                    </div>
+                  ) : form.address
+                ) : '-'}
+              </div>
             )}
           </div>
 
