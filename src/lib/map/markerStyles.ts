@@ -16,7 +16,7 @@ export const STATUS_LABELS: Record<StoreStatus, string> = {
   candidate: '후보',
 };
 
-export const MULTI_BRAND_COLOR = '#F97316'; // 두 브랜드 동시 운영 지점
+export const MULTI_BRAND_COLOR = '#0D9488'; // 두 브랜드 동시 운영 지점 (청록)
 
 export function getStoreColor(store: Store, brands: Brand[]): string {
   if (store.status !== 'open') return STATUS_COLORS[store.status];
