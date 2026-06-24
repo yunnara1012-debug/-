@@ -177,19 +177,9 @@ export function StorePanel({ store, brands, allStores, onUpdate, onDelete, onClo
             </span>
           )}
         </div>
-        <div className="flex items-center gap-1 flex-none">
-          {!editing && (
-            <button onClick={() => setEditing(true)} className="p-2 text-gray-400 hover:text-blue-500 transition-colors">
-              <Edit3 size={17} />
-            </button>
-          )}
-          {!editing && (
-            <button onClick={() => { if (confirm('삭제할까요?')) onDelete(store.id); }} className="p-2 text-gray-400 hover:text-red-500 transition-colors">
-              <Trash2 size={17} />
-            </button>
-          )}
-          <button onClick={() => { if (isNew) onDelete(store.id); onClose(); }} className="p-2 text-gray-400 hover:text-gray-600 transition-colors">
-            <X size={18} />
+        <div className="flex items-center flex-none">
+          <button onClick={() => { if (isNew) onDelete(store.id); onClose(); }} className="p-1.5 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors">
+            <X size={22} />
           </button>
         </div>
       </div>
@@ -348,10 +338,10 @@ export function StorePanel({ store, brands, allStores, onUpdate, onDelete, onClo
       ) : (
         <div className="flex-none px-4 py-3 border-t border-gray-100 flex gap-2">
           <button
-            onClick={() => { if (isNew) onDelete(store.id); onClose(); }}
-            className="md:hidden flex-1 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-600 text-sm font-semibold rounded-xl transition-colors flex items-center justify-center gap-1"
+            onClick={() => { if (confirm('삭제할까요?')) onDelete(store.id); }}
+            className="flex-1 py-2.5 bg-red-50 hover:bg-red-100 text-red-600 text-sm font-semibold rounded-xl transition-colors flex items-center justify-center gap-1"
           >
-            <X size={15} />닫기
+            <Trash2 size={15} />삭제
           </button>
           <button
             onClick={() => setEditing(true)}
