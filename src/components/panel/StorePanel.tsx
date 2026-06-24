@@ -338,16 +338,16 @@ export function StorePanel({ store, brands, allStores, onUpdate, onDelete, onClo
       ) : (
         <div className="flex-none px-4 py-3 border-t border-gray-100 flex gap-2">
           <button
+            onClick={() => setEditing(true)}
+            className="flex-[2] py-2.5 bg-blue-500 hover:bg-blue-600 text-white text-sm font-semibold rounded-xl transition-colors flex items-center justify-center gap-1"
+          >
+            <Edit3 size={15} />수정
+          </button>
+          <button
             onClick={() => { if (confirm('삭제할까요?')) onDelete(store.id); }}
             className="flex-1 py-2.5 bg-red-50 hover:bg-red-100 text-red-600 text-sm font-semibold rounded-xl transition-colors flex items-center justify-center gap-1"
           >
             <Trash2 size={15} />삭제
-          </button>
-          <button
-            onClick={() => setEditing(true)}
-            className="flex-1 py-2.5 bg-blue-500 hover:bg-blue-600 text-white text-sm font-semibold rounded-xl transition-colors flex items-center justify-center gap-1"
-          >
-            <Edit3 size={15} />수정
           </button>
         </div>
       )}

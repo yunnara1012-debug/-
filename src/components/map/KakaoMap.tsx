@@ -99,6 +99,7 @@ export function KakaoMap({ stores, brands, verdict, selectedStoreId, highlighted
   const containerRef = useRef<HTMLDivElement>(null);
   const storesRef = useRef<Store[]>(stores);
   const brandsRef = useRef<Brand[]>(brands);
+  const markerJustClickedRef = useRef(false);
   const [mapZoom, setMapZoom] = useState(8);
 
   useEffect(() => { storesRef.current = stores; }, [stores]);
@@ -171,7 +172,7 @@ export function KakaoMap({ stores, brands, verdict, selectedStoreId, highlighted
       const logoUrl = getBrandLogo(group, currentBrands);
       const label = (showLabel && group.length === 1) ? getShortName(primary.name) : undefined;
       if (logoUrl) {
-        const { el, yAnchor } = makeLogoPinElement(logoUrl, color, group.length, () => { onStoreClick(group[0]); }, label);
+        const { el, yAnchor } = makeLogoPinElement(logoUrl, color, group.length, () => { markerJustClickedRef.current = true; onStoreClick(group[0]); }, label);
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const overlay = new (kakao.maps as any).CustomOverlay({
           content: el,
@@ -206,7 +207,7 @@ export function KakaoMap({ stores, brands, verdict, selectedStoreId, highlighted
           zIndex: 5,
         });
 
-        kakao.maps.event.addListener(marker, 'click', () => { onStoreClick(group[0]); });
+        kakao.maps.event.addListener(marker, 'click', () => { markerJustClickedRef.current = true; onStoreClick(group[0]); });
         markersRef.current.push({ remove: () => marker.setMap(null), stores: group });
       }
 
@@ -251,6 +252,7 @@ export function KakaoMap({ stores, brands, verdict, selectedStoreId, highlighted
           setMapZoom(map.getLevel());
         });
         kakao.maps.event.addListener(map, 'click', () => {
+          if (markerJustClickedRef.current) { markerJustClickedRef.current = false; return; }
           onMapClickRef.current?.();
         });
         renderStores(map, storesRef.current, brandsRef.current, 8);
