@@ -56,7 +56,6 @@ export default function Home() {
   const [selectedStore, setSelectedStore] = useState<Store | null>(null);
   const [highlightedStore, setHighlightedStore] = useState<Store | null>(null);
   const [verdict, setVerdict] = useState<VerdictResult | null>(null);
-  const [showVerdictPanel, setShowVerdictPanel] = useState(false);
   const [showImportPanel, setShowImportPanel] = useState(false);
   const [showStoreList, setShowStoreList] = useState(false);
   const [showMore, setShowMore] = useState(false);
@@ -120,7 +119,6 @@ export default function Home() {
 
   const handleVerdict = useCallback((result: VerdictResult) => {
     setVerdict(result);
-    setShowVerdictPanel(true);
     setSelectedStore(null);
   }, []);
 
@@ -128,7 +126,6 @@ export default function Home() {
     setSelectedStore(store);
     setHighlightedStore(store);
     setVerdict(null);
-    setShowVerdictPanel(false);
     if (typeof window !== 'undefined' && window.innerWidth < 768) setShowStoreList(false);
   }, []);
 
@@ -373,11 +370,11 @@ export default function Home() {
         />
 
         {/* Verdict Panel */}
-        {verdict && !selectedStore && showVerdictPanel && (
+        {verdict && !selectedStore && (
           <VerdictPanel
             verdict={verdict}
             onCreatePin={handleAddStore}
-            onClose={() => setShowVerdictPanel(false)}
+            onClose={() => setVerdict(null)}
           />
         )}
 
