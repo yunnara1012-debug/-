@@ -32,6 +32,15 @@ export function SearchBar({ stores, onVerdict, onSelectStore }: Props) {
     if (!q.trim() || typeof kakao === 'undefined') return [];
     return new Promise((resolve) => {
       const geocoder = new kakao.maps.services.Geocoder();
+      const toSugg = (places: kakao.maps.services.PlacesSearchResult[]) =>
+        places.slice(0, 5).map(p => ({
+          type: 'place' as const,
+          placeName: p.place_name,
+          address: p.road_address_name || p.address_name,
+          lat: parseFloat(p.y),
+          lng: parseFloat(p.x),
+        }));
+
       geocoder.addressSearch(q, (result, status) => {
         if (status === kakao.maps.services.Status.OK && result.length > 0) {
           resolve(result.slice(0, 5).map(r => ({
@@ -44,16 +53,19 @@ export function SearchBar({ stores, onVerdict, onSelectStore }: Props) {
         } else {
           const ps = new kakao.maps.services.Places();
           ps.keywordSearch(q, (places, pStatus) => {
-            if (pStatus === kakao.maps.services.Status.OK) {
-              resolve(places.slice(0, 5).map(p => ({
-                type: 'place' as const,
-                placeName: p.place_name,
-                address: p.road_address_name || p.address_name,
-                lat: parseFloat(p.y),
-                lng: parseFloat(p.x),
-              })));
+            if (pStatus === kakao.maps.services.Status.OK && places.length > 0) {
+              resolve(toSugg(places));
             } else {
-              resolve([]);
+              // 마지막 토큰으로 재시도 ("고양시 고암동" → "고암동")
+              const tokens = q.trim().split(/\s+/);
+              const lastToken = tokens[tokens.length - 1];
+              if (tokens.length > 1 && lastToken) {
+                ps.keywordSearch(lastToken, (places2, pStatus2) => {
+                  resolve(pStatus2 === kakao.maps.services.Status.OK ? toSugg(places2) : []);
+                });
+              } else {
+                resolve([]);
+              }
             }
           });
         }
