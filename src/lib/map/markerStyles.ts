@@ -16,10 +16,14 @@ export const STATUS_LABELS: Record<StoreStatus, string> = {
   candidate: '후보',
 };
 
+export const MULTI_BRAND_COLOR = '#F97316'; // 두 브랜드 동시 운영 지점
+
 export function getStoreColor(store: Store, brands: Brand[]): string {
   if (store.status !== 'open') return STATUS_COLORS[store.status];
-  const brand = brands.find(b => store.brandIds.includes(b.id));
-  return brand?.color ?? STATUS_COLORS.open;
+  // 오픈 상태에서 복수 브랜드 보유 → 주황
+  const activeBrands = brands.filter(b => store.brandIds.includes(b.id));
+  if (activeBrands.length > 1) return MULTI_BRAND_COLOR;
+  return activeBrands[0]?.color ?? STATUS_COLORS.open;
 }
 
 // label: 핀 아래에 표시할 짧은 이름 (줌 인 시에만 전달)
