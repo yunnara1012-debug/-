@@ -89,9 +89,13 @@ export function SearchBar({ stores, onVerdict, onSelectStore }: Props) {
     debounceRef.current = setTimeout(async () => {
       const q = query.trim().toLowerCase();
       const storeMatches: Suggestion[] = stores
-        .filter(s => s.name.toLowerCase().includes(q) || s.address.toLowerCase().includes(q))
+        .filter(s =>
+          s.name.toLowerCase().includes(q) ||
+          s.address.toLowerCase().includes(q) ||
+          (s.contactName ?? '').toLowerCase().includes(q)
+        )
         .slice(0, 4)
-        .map(s => ({ type: 'store' as const, placeName: s.name, address: s.address, lat: s.lat, lng: s.lng, store: s }));
+        .map(s => ({ type: 'store' as const, placeName: s.name || s.contactName || '', address: s.address, lat: s.lat, lng: s.lng, store: s }));
 
       const kakaoResults = await searchKakao(query);
       const all = [...storeMatches, ...kakaoResults].slice(0, 7);
