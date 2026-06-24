@@ -52,6 +52,10 @@ export default function Home() {
     return saved.map(b => ({ ...b, color: b.color ?? INITIAL_BRANDS.find(ib => ib.id === b.id)?.color }));
   });
   const [stores, setStores] = useState<Store[]>(() => loadFromStorage('fm-stores', INITIAL_STORES));
+  // 브랜드 표시 순서 (localStorage 유지 → 새 브랜드는 맨 뒤)
+  const [brandOrder, setBrandOrder] = useState<string[]>(() =>
+    loadFromStorage('fm-brand-order', INITIAL_BRANDS.map(b => b.id))
+  );
   const [selectedBrandId, setSelectedBrandId] = useState('all');
   const [selectedStore, setSelectedStore] = useState<Store | null>(null);
   const [highlightedStore, setHighlightedStore] = useState<Store | null>(null);
@@ -65,6 +69,17 @@ export default function Home() {
 
   useEffect(() => { localStorage.setItem('fm-stores', JSON.stringify(stores)); }, [stores]);
   useEffect(() => { localStorage.setItem('fm-brands', JSON.stringify(brands)); }, [brands]);
+  useEffect(() => { localStorage.setItem('fm-brand-order', JSON.stringify(brandOrder)); }, [brandOrder]);
+
+  // brands 변경 시 brandOrder 동기화 (새 브랜드 → 맨 뒤 추가, 삭제된 브랜드 → 제거)
+  useEffect(() => {
+    setBrandOrder(prev => {
+      const filtered = prev.filter(id => brands.some(b => b.id === id));
+      const newIds = brands.filter(b => !prev.includes(b.id)).map(b => b.id);
+      if (newIds.length === 0 && filtered.length === prev.length) return prev;
+      return [...filtered, ...newIds];
+    });
+  }, [brands]);
 
   // Supabase 초기 로드: 클라우드 데이터가 있으면 덮어씀, 없으면 로컬 데이터를 Supabase로 마이그레이션
   useEffect(() => {
@@ -93,6 +108,15 @@ export default function Home() {
     init();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // brandOrder 기준으로 정렬된 브랜드 배열 (UI 표시용)
+  const sortedBrands = [...brands].sort((a, b) => {
+    const ai = brandOrder.indexOf(a.id);
+    const bi = brandOrder.indexOf(b.id);
+    if (ai === -1) return 1;
+    if (bi === -1) return -1;
+    return ai - bi;
+  });
 
   const selectedBrandStores = selectedBrandId === 'all'
     ? stores
@@ -167,15 +191,13 @@ export default function Home() {
   const handleAddBrand = useCallback(() => {
     const name = prompt('브랜드 이름을 입력하세요:');
     if (!name?.trim()) return;
-    setBrands(prev => {
-      const color = BRAND_COLORS[prev.length % BRAND_COLORS.length];
-      const brand = { id: 'brand-' + Date.now(), name: name.trim(), keyword: name.trim(), color };
-      upsertBrand(brand);
-      return [...prev, brand];
-    });
+    const color = BRAND_COLORS[brands.length % BRAND_COLORS.length];
+    const brand = { id: 'brand-' + Date.now(), name: name.trim(), keyword: name.trim(), color };
+    setBrands(prev => [...prev, brand]);
+    setBrandOrder(prev => [...prev, brand.id]); // 새 브랜드는 맨 뒤
+    upsertBrand(brand);
     setShowMore(false);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [brands.length, setBrandOrder]);
 
   const handleClosePanel = useCallback(() => {
     setSelectedStore(null);
@@ -190,7 +212,7 @@ export default function Home() {
         <div className="flex items-center gap-1.5 px-3 py-2">
           {/* 브랜드 선택 */}
           <div className="w-28 md:w-44 flex-none">
-            <BrandSelector brands={brands} selectedBrandId={selectedBrandId} onSelect={setSelectedBrandId} />
+            <BrandSelector brands={sortedBrands} selectedBrandId={selectedBrandId} onSelect={setSelectedBrandId} />
           </div>
 
           {/* 검색창 - 데스크톱만 */}
@@ -360,7 +382,7 @@ export default function Home() {
       <main className="flex-1 relative overflow-hidden">
         <KakaoMap
           stores={displayedStores}
-          brands={brands}
+          brands={sortedBrands}
           selectedBrandId={selectedBrandId}
           verdict={verdict}
           selectedStoreId={selectedStore?.id}
@@ -382,7 +404,7 @@ export default function Home() {
         {showStoreList && (
           <StoreListPanel
             stores={displayedStores}
-            brands={brands}
+            brands={sortedBrands}
             onSelectStore={handleHighlightStore}
             onClose={() => setShowStoreList(false)}
           />
@@ -392,7 +414,7 @@ export default function Home() {
         {selectedStore && (
           <StorePanel
             store={selectedStore}
-            brands={brands}
+            brands={sortedBrands}
             allStores={stores}
             onUpdate={handleStoreUpdate}
             onDelete={handleStoreDelete}
@@ -404,7 +426,7 @@ export default function Home() {
       {/* Import Panel */}
       {showImportPanel && (
         <ImportPanel
-          brands={brands}
+          brands={sortedBrands}
           selectedBrandId={selectedBrandId}
           existingStores={stores}
           onApprove={(store) => { setStores(prev => [...prev, store]); upsertStore(store); }}

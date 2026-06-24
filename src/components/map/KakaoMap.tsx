@@ -27,14 +27,16 @@ const BRAND_LOGOS: Record<string, string> = {
   '천년아구찜': '/logos/chunnyeon.png',
 };
 
-function getBrandLogo(group: Store[], currentBrands: Brand[]): string | null {
-  for (const store of group) {
-    for (const brandId of store.brandIds) {
-      const brand = currentBrands.find(b => b.id === brandId);
-      if (brand) {
-        const key = brand.keyword || brand.name;
-        if (BRAND_LOGOS[key]) return BRAND_LOGOS[key];
-      }
+function getBrandLogo(group: Store[], currentBrands: Brand[], activeBrandId = 'all'): string | null {
+  // 선택된 브랜드 필터 우선, 그 다음 currentBrands 배열 순서(전역 순서) 따름
+  const ordered = activeBrandId !== 'all'
+    ? [...currentBrands.filter(b => b.id === activeBrandId), ...currentBrands.filter(b => b.id !== activeBrandId)]
+    : currentBrands;
+
+  for (const brand of ordered) {
+    if (group.some(store => store.brandIds.includes(brand.id))) {
+      const key = brand.keyword || brand.name;
+      if (BRAND_LOGOS[key]) return BRAND_LOGOS[key];
     }
   }
   return null;
@@ -84,7 +86,7 @@ function makeLogoPinElement(logoUrl: string, color: string, count: number, onCli
   return { el, yAnchor };
 }
 
-export function KakaoMap({ stores, brands, verdict, selectedStoreId, highlightedStore, onStoreClick, onMapClick }: KakaoMapProps) {
+export function KakaoMap({ stores, brands, selectedBrandId, verdict, selectedStoreId, highlightedStore, onStoreClick, onMapClick }: KakaoMapProps) {
   const mapRef = useRef<kakao.maps.Map | null>(null);
   const markersRef = useRef<{ remove: () => void; stores: Store[] }[]>([]);
   const circlesRef = useRef<kakao.maps.Circle[]>([]);
@@ -99,11 +101,13 @@ export function KakaoMap({ stores, brands, verdict, selectedStoreId, highlighted
   const containerRef = useRef<HTMLDivElement>(null);
   const storesRef = useRef<Store[]>(stores);
   const brandsRef = useRef<Brand[]>(brands);
+  const selectedBrandIdRef = useRef(selectedBrandId);
   const markerJustClickedRef = useRef(false);
   const [mapZoom, setMapZoom] = useState(8);
 
   useEffect(() => { storesRef.current = stores; }, [stores]);
   useEffect(() => { brandsRef.current = brands; }, [brands]);
+  useEffect(() => { selectedBrandIdRef.current = selectedBrandId; }, [selectedBrandId]);
 
   const clearOverlays = useCallback(() => {
     markersRef.current.forEach(({ remove }) => remove());
@@ -151,7 +155,7 @@ export function KakaoMap({ stores, brands, verdict, selectedStoreId, highlighted
     return groups;
   }, []);
 
-  const renderStores = useCallback((map: kakao.maps.Map, storeList: Store[], currentBrands: Brand[], zoom = 8, highlightId?: string) => {
+  const renderStores = useCallback((map: kakao.maps.Map, storeList: Store[], currentBrands: Brand[], zoom = 8, highlightId?: string, activeBrandId = 'all') => {
     markersRef.current.forEach(({ remove }) => remove());
     markersRef.current = [];
     circlesRef.current.forEach(c => c.setMap(null));
@@ -169,7 +173,7 @@ export function KakaoMap({ stores, brands, verdict, selectedStoreId, highlighted
       const color = isHighlighted ? '#EC4899' : getStoreColor(primary, currentBrands);
       const position = new kakao.maps.LatLng(primary.lat, primary.lng);
 
-      const logoUrl = getBrandLogo(group, currentBrands);
+      const logoUrl = getBrandLogo(group, currentBrands, activeBrandId);
       const label = (showLabel && group.length === 1) ? getShortName(primary.name) : undefined;
       if (logoUrl) {
         const { el, yAnchor } = makeLogoPinElement(logoUrl, color, group.length, () => { markerJustClickedRef.current = true; onStoreClick(group[0]); }, label);
@@ -255,7 +259,7 @@ export function KakaoMap({ stores, brands, verdict, selectedStoreId, highlighted
           if (markerJustClickedRef.current) { markerJustClickedRef.current = false; return; }
           onMapClickRef.current?.();
         });
-        renderStores(map, storesRef.current, brandsRef.current, 8);
+        renderStores(map, storesRef.current, brandsRef.current, 8, undefined, selectedBrandIdRef.current);
       });
     };
 
@@ -284,8 +288,8 @@ export function KakaoMap({ stores, brands, verdict, selectedStoreId, highlighted
 
   useEffect(() => {
     if (!mapRef.current) return;
-    renderStores(mapRef.current, stores, brands, mapZoom, highlightedStore?.id);
-  }, [stores, brands, renderStores, mapZoom, highlightedStore]);
+    renderStores(mapRef.current, stores, brands, mapZoom, highlightedStore?.id, selectedBrandId);
+  }, [stores, brands, renderStores, mapZoom, highlightedStore, selectedBrandId]);
 
   useEffect(() => {
     if (!mapRef.current) return;

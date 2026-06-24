@@ -330,12 +330,14 @@ export function StorePanel({ store, brands, allStores, onUpdate, onDelete, onClo
               </div>
             ) : (
               <div className="flex flex-wrap gap-1.5">
-                {form.brandIds.map(id => {
-                  const brand = brands.find(b => b.id === id);
-                  return brand ? (
-                    <span key={id} className="px-2 py-0.5 bg-orange-100 text-orange-700 text-xs rounded-full font-medium">{brand.name}</span>
-                  ) : null;
-                })}
+                {[...form.brandIds]
+                  .sort((a, b) => brands.findIndex(br => br.id === a) - brands.findIndex(br => br.id === b))
+                  .map(id => {
+                    const brand = brands.find(b => b.id === id);
+                    return brand ? (
+                      <span key={id} className="px-2 py-0.5 bg-orange-100 text-orange-700 text-xs rounded-full font-medium">{brand.name}</span>
+                    ) : null;
+                  })}
               </div>
             )}
           </div>
