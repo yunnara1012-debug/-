@@ -30,8 +30,35 @@ export function SearchBar({ stores, onVerdict, onSelectStore }: Props) {
 
   const searchKakao = useCallback(async (q: string): Promise<Suggestion[]> => {
     if (!q.trim() || typeof kakao === 'undefined') return [];
+
+    // "경기 군포" → "경기도 군포" 처럼 도 약어 자동 확장
+    const expand = (s: string) => s
+      .replace(/^경기(\s|$)/, '경기도$1')
+      .replace(/^강원(\s|$)/, '강원도$1')
+      .replace(/^충북(\s|$)/, '충청북도$1')
+      .replace(/^충남(\s|$)/, '충청남도$1')
+      .replace(/^전북(\s|$)/, '전라북도$1')
+      .replace(/^전남(\s|$)/, '전라남도$1')
+      .replace(/^경북(\s|$)/, '경상북도$1')
+      .replace(/^경남(\s|$)/, '경상남도$1')
+      .replace(/^제주(\s|$)/, '제주특별자치도$1');
+
+    const normalized = expand(q.trim());
+
     return new Promise((resolve) => {
       const geocoder = new kakao.maps.services.Geocoder();
+      const ps = new kakao.maps.services.Places();
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const toAddrSugg = (results: any[]) =>
+        results.slice(0, 5).map(r => ({
+          type: 'place' as const,
+          placeName: r.address_name,
+          address: r.road_address?.address_name ?? r.address_name,
+          lat: parseFloat(r.y),
+          lng: parseFloat(r.x),
+        }));
+
       const toSugg = (places: kakao.maps.services.PlacesSearchResult[]) =>
         places.slice(0, 5).map(p => ({
           type: 'place' as const,
@@ -41,33 +68,36 @@ export function SearchBar({ stores, onVerdict, onSelectStore }: Props) {
           lng: parseFloat(p.x),
         }));
 
-      geocoder.addressSearch(q, (result, status) => {
+      // 앞 토큰 제거 체인: "경기도 군포" → "군포"
+      const tokens = normalized.split(/\s+/);
+      const chain = tokens.map((_, i) => tokens.slice(i).join(' '));
+
+      const tryChain = (index: number) => {
+        if (index >= chain.length) { resolve([]); return; }
+        ps.keywordSearch(chain[index], (places, pStatus) => {
+          if (pStatus === kakao.maps.services.Status.OK && places.length > 0) {
+            resolve(toSugg(places));
+          } else {
+            tryChain(index + 1);
+          }
+        });
+      };
+
+      // 1) 정규화된 주소로 addressSearch
+      geocoder.addressSearch(normalized, (result, status) => {
         if (status === kakao.maps.services.Status.OK && result.length > 0) {
-          resolve(result.slice(0, 5).map(r => ({
-            type: 'place' as const,
-            placeName: r.address_name,
-            address: r.road_address?.address_name ?? r.address_name,
-            lat: parseFloat(r.y),
-            lng: parseFloat(r.x),
-          })));
-        } else {
-          const ps = new kakao.maps.services.Places();
-          ps.keywordSearch(q, (places, pStatus) => {
-            if (pStatus === kakao.maps.services.Status.OK && places.length > 0) {
-              resolve(toSugg(places));
+          resolve(toAddrSugg(result));
+        } else if (normalized !== q.trim()) {
+          // 2) 원본 그대로 addressSearch (이미 완전한 주소일 경우)
+          geocoder.addressSearch(q.trim(), (result2, status2) => {
+            if (status2 === kakao.maps.services.Status.OK && result2.length > 0) {
+              resolve(toAddrSugg(result2));
             } else {
-              // 마지막 토큰으로 재시도 ("고양시 고암동" → "고암동")
-              const tokens = q.trim().split(/\s+/);
-              const lastToken = tokens[tokens.length - 1];
-              if (tokens.length > 1 && lastToken) {
-                ps.keywordSearch(lastToken, (places2, pStatus2) => {
-                  resolve(pStatus2 === kakao.maps.services.Status.OK ? toSugg(places2) : []);
-                });
-              } else {
-                resolve([]);
-              }
+              tryChain(0);
             }
           });
+        } else {
+          tryChain(0);
         }
       });
     });
