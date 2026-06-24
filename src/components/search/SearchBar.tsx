@@ -169,6 +169,17 @@ export function SearchBar({ stores, onVerdict, onSelectStore }: Props) {
       handleSelectSuggestion(current[0]);
       return;
     }
+    // debounce 전 엔터 대비: Kakao 검색 전에 매장/점주명 매칭 먼저 확인
+    const q = query.trim().toLowerCase();
+    const matched = stores.find(s =>
+      s.name.toLowerCase().includes(q) ||
+      s.address.toLowerCase().includes(q) ||
+      (s.contactName ?? '').toLowerCase().includes(q)
+    );
+    if (matched) {
+      handleSelectSuggestion({ type: 'store', placeName: matched.name || matched.contactName || '', address: matched.address, lat: matched.lat, lng: matched.lng, store: matched });
+      return;
+    }
     setLoading(true);
     searchKakao(query).then(results => {
       if (results.length > 0) handleSelectSuggestion(results[0]);
