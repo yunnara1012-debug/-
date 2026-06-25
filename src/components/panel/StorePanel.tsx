@@ -3,8 +3,7 @@ import { useState, useEffect } from 'react';
 import type { Store, Brand, StoreStatus } from '@/types';
 import { STATUS_LABELS, getStoreColor } from '@/lib/map/markerStyles';
 import { haversineDistance, formatDistance } from '@/lib/geo/distance';
-import { uploadBizLicense } from '@/lib/supabase/db';
-import { X, Phone, Edit3, Trash2, Check, MapPin, Loader2, Upload } from 'lucide-react';
+import { X, Phone, Edit3, Trash2, Check, MapPin, Loader2 } from 'lucide-react';
 
 interface Props {
   store: Store;
@@ -110,12 +109,9 @@ export function StorePanel({ store, brands, allStores, onUpdate, onDelete, onClo
   const [saving, setSaving] = useState(false);
   const [geocoding, setGeocoding] = useState(false);
   const [addrVariants, setAddrVariants] = useState<{ road?: string; jibun?: string } | null>(null);
-  const [bizFile, setBizFile] = useState<File | null>(null);
-
   useEffect(() => {
     setForm({ ...store });
     setEditing(store.name === '');
-    setBizFile(null);
   }, [store.id, store]);
 
   useEffect(() => {
@@ -149,14 +145,7 @@ export function StorePanel({ store, brands, allStores, onUpdate, onDelete, onClo
       }
     }
 
-    // 사업자등록증 파일 업로드
-    if (bizFile) {
-      const url = await uploadBizLicense(form.id, bizFile);
-      if (url) updated = { ...updated, bizLicenseUrl: url };
-    }
-
     onUpdate(updated);
-    setBizFile(null);
     setEditing(false);
     setSaving(false);
   };
@@ -164,7 +153,6 @@ export function StorePanel({ store, brands, allStores, onUpdate, onDelete, onClo
   const handleCancel = () => {
     if (isNew) { onDelete(store.id); onClose(); return; }
     setForm({ ...store });
-    setBizFile(null);
     setEditing(false);
   };
 
@@ -358,43 +346,6 @@ export function StorePanel({ store, brands, allStores, onUpdate, onDelete, onClo
               className="w-full h-24 border border-gray-200 rounded-lg px-2 py-2 text-sm outline-none focus:border-blue-400 resize-none" placeholder="메모" />
           ) : (
             <div className="h-24 overflow-y-auto text-sm text-gray-800 whitespace-pre-wrap">{form.memo || '-'}</div>
-          )}
-        </div>
-
-        {/* 사업자등록증 */}
-        <div className="border-t border-gray-100 pt-3">
-          <label className="block text-xs text-gray-500 mb-1.5">사업자등록증</label>
-          {editing ? (
-            <div className="space-y-1.5">
-              {form.bizLicenseUrl && (
-                <div className="text-xs text-green-600 flex items-center gap-1">
-                  <Check size={12} />현재 파일 있음
-                </div>
-              )}
-              <label className="flex items-center gap-2 cursor-pointer px-3 py-2 border border-dashed border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-                <Upload size={15} className="text-gray-400 flex-none" />
-                <span className="text-sm text-gray-500 truncate">
-                  {bizFile ? bizFile.name : 'PDF 또는 이미지 선택'}
-                </span>
-                <input type="file" accept=".pdf,image/*" className="hidden"
-                  onChange={e => setBizFile(e.target.files?.[0] ?? null)} />
-              </label>
-            </div>
-          ) : (
-            form.bizLicenseUrl ? (
-              <div className="flex items-center gap-2">
-                <a href={form.bizLicenseUrl} target="_blank" rel="noopener noreferrer"
-                  className="text-sm text-blue-600 hover:underline flex-1 truncate">
-                  미리보기
-                </a>
-                <a href={form.bizLicenseUrl} download
-                  className="flex-none text-xs px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg border border-blue-200 transition-colors">
-                  다운로드
-                </a>
-              </div>
-            ) : (
-              <div className="text-sm text-gray-400">등록된 파일 없음</div>
-            )
           )}
         </div>
 
