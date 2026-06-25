@@ -21,6 +21,7 @@ export interface Store {
   memo?: string;
   inflowSource?: string;
   brandIds: string[];
+  bizLicenseUrl?: string;
   createdAt: string;
   updatedAt: string;
 }

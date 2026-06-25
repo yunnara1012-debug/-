@@ -22,9 +22,10 @@ function getShortName(name: string): string {
 }
 
 
+const BASE = process.env.NEXT_PUBLIC_BASE_PATH || '';
 const BRAND_LOGOS: Record<string, string> = {
-  '호랑이족발': '/logos/horangi.png',
-  '천년아구찜': '/logos/chunnyeon.png',
+  '호랑이족발': `${BASE}/logos/horangi.png`,
+  '천년아구찜': `${BASE}/logos/chunnyeon.png`,
 };
 
 function getBrandLogo(group: Store[], currentBrands: Brand[], activeBrandId = 'all'): string | null {
