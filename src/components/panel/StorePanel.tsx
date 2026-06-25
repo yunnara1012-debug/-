@@ -14,7 +14,7 @@ interface Props {
   onClose: () => void;
 }
 
-const STATUSES: StoreStatus[] = ['open', 'contracted', 'consulting', 'closed', 'candidate'];
+const STATUSES: StoreStatus[] = ['open', 'contracted', 'closed', 'candidate'];
 
 function computeCanOpen(store: Store, allStores: Store[]): { canOpen: boolean; nearestDistance?: number; nearestName?: string } {
   const others = allStores.filter(
