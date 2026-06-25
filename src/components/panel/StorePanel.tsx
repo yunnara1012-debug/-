@@ -166,7 +166,7 @@ export function StorePanel({ store, brands, allStores, onUpdate, onDelete, onClo
   };
 
   return (
-    <div className="absolute inset-x-0 bottom-0 md:inset-auto md:right-0 md:top-0 md:bottom-0 md:w-80 bg-white shadow-2xl z-40 flex flex-col rounded-t-2xl md:rounded-none border-t md:border-l border-gray-200">
+    <div className="absolute inset-x-0 bottom-0 max-h-full md:inset-auto md:right-0 md:top-0 md:bottom-0 md:w-80 bg-white shadow-2xl z-40 flex flex-col rounded-t-2xl md:rounded-none border-t md:border-l border-gray-200">
       {/* 모바일 핸들 */}
       <div className="flex-none pt-3 pb-1 flex justify-center md:hidden">
         <div className="w-10 h-1 bg-gray-300 rounded-full" />
