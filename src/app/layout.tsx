@@ -4,7 +4,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "가맹점 관리",
   description: "호랑이족발 가맹점 관리 시스템",
-  manifest: "/manifest.json",
+  manifest: `${process.env.NEXT_PUBLIC_BASE_PATH ?? ''}/manifest.json`,
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
