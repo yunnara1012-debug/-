@@ -17,6 +17,7 @@ function toCamelStore(row: any): Store {
     memo: row.memo ?? undefined,
     inflowSource: row.inflow_source ?? undefined,
     brandIds: row.brand_ids ?? [],
+    bizLicenseUrl: row.biz_license_url ?? undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -37,6 +38,7 @@ function toSnakeStore(s: Store): Record<string, unknown> {
     memo: s.memo ?? null,
     inflow_source: s.inflowSource ?? null,
     brand_ids: s.brandIds,
+    biz_license_url: s.bizLicenseUrl ?? null,
     created_at: s.createdAt,
     updated_at: s.updatedAt,
   };
@@ -90,4 +92,14 @@ export async function deleteBrand(id: string): Promise<void> {
   if (!supabase) return;
   const { error } = await supabase.from('brands').delete().eq('id', id);
   if (error) console.error('deleteBrand', error);
+}
+
+export async function uploadBizLicense(storeId: string, file: File): Promise<string | null> {
+  if (!supabase) return null;
+  const ext = file.name.split('.').pop() ?? 'pdf';
+  const path = `${storeId}.${ext}`;
+  const { error } = await supabase.storage.from('biz-licenses').upload(path, file, { upsert: true });
+  if (error) { console.error('uploadBizLicense', error); return null; }
+  const { data } = supabase.storage.from('biz-licenses').getPublicUrl(path);
+  return data.publicUrl;
 }

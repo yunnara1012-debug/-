@@ -3,7 +3,8 @@ import { useState, useEffect } from 'react';
 import type { Store, Brand, StoreStatus } from '@/types';
 import { STATUS_LABELS, getStoreColor } from '@/lib/map/markerStyles';
 import { haversineDistance, formatDistance } from '@/lib/geo/distance';
-import { X, Phone, Edit3, Trash2, Check, MapPin, Loader2 } from 'lucide-react';
+import { uploadBizLicense } from '@/lib/supabase/db';
+import { X, Phone, Edit3, Trash2, Check, MapPin, Loader2, Upload } from 'lucide-react';
 
 interface Props {
   store: Store;
@@ -109,10 +110,12 @@ export function StorePanel({ store, brands, allStores, onUpdate, onDelete, onClo
   const [saving, setSaving] = useState(false);
   const [geocoding, setGeocoding] = useState(false);
   const [addrVariants, setAddrVariants] = useState<{ road?: string; jibun?: string } | null>(null);
+  const [bizFile, setBizFile] = useState<File | null>(null);
 
   useEffect(() => {
     setForm({ ...store });
     setEditing(store.name === '');
+    setBizFile(null);
   }, [store.id, store]);
 
   useEffect(() => {
@@ -146,7 +149,14 @@ export function StorePanel({ store, brands, allStores, onUpdate, onDelete, onClo
       }
     }
 
+    // 사업자등록증 파일 업로드
+    if (bizFile) {
+      const url = await uploadBizLicense(form.id, bizFile);
+      if (url) updated = { ...updated, bizLicenseUrl: url };
+    }
+
     onUpdate(updated);
+    setBizFile(null);
     setEditing(false);
     setSaving(false);
   };
@@ -154,6 +164,7 @@ export function StorePanel({ store, brands, allStores, onUpdate, onDelete, onClo
   const handleCancel = () => {
     if (isNew) { onDelete(store.id); onClose(); return; }
     setForm({ ...store });
+    setBizFile(null);
     setEditing(false);
   };
 
@@ -210,160 +221,183 @@ export function StorePanel({ store, brands, allStores, onUpdate, onDelete, onClo
         </div>
       </div>
 
-      {/* 본문 */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      {/* 본문 — 전체 스크롤 */}
+      <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
 
-        {/* 상단 고정 필드 */}
-        <div className="flex-none overflow-y-auto px-4 py-3 space-y-3 max-h-[60%]">
-
-          {/* 상태 + 오픈일 */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs text-gray-500 mb-1">상태</label>
-              {editing ? (
-                <select
-                  value={form.status}
-                  onChange={e => set('status', e.target.value as StoreStatus)}
-                  className="w-full border border-gray-200 rounded-lg px-2 py-2 text-sm outline-none focus:border-blue-400"
-                >
-                  {STATUSES.map(s => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
-                </select>
-              ) : (
-                <div>
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold text-white" style={{ backgroundColor: storeColor }}>
-                    {STATUS_LABELS[form.status]}
-                  </span>
-                  {form.status === 'candidate' && (
-                    <div className={`text-xs font-semibold mt-1 ${canOpen ? 'text-green-600' : 'text-red-600'}`}>
-                      출점 {canOpen ? '가능' : '불가'}
-                      {!canOpen && nearestName && nearestDistance !== undefined && (
-                        <span className="font-normal ml-1">— {nearestName} {formatDistance(nearestDistance)}</span>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-            <div>
-              <label className="block text-xs text-gray-500 mb-1">오픈일</label>
-              {editing ? (
-                <input type="date" value={form.openDate ?? ''} onChange={e => set('openDate', e.target.value)}
-                  className="w-full border border-gray-200 rounded-lg px-2 py-2 text-sm outline-none focus:border-blue-400" />
-              ) : (
-                <div className="text-sm text-gray-800">{form.openDate || '-'}</div>
-              )}
-            </div>
-          </div>
-
-          {/* 점주명 + 전화번호 */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs text-gray-500 mb-1">점주명</label>
-              {editing ? (
-                <input value={form.contactName ?? ''} onChange={e => set('contactName', e.target.value)}
-                  className="w-full border border-gray-200 rounded-lg px-2 py-2 text-sm outline-none focus:border-blue-400" placeholder="이름" />
-              ) : (
-                <div className="text-sm text-gray-800">{form.contactName || '-'}</div>
-              )}
-            </div>
-            <div>
-              <label className="block text-xs text-gray-500 mb-1">전화번호</label>
-              {editing ? (
-                <input value={form.phone ?? ''} onChange={e => set('phone', formatPhone(e.target.value))}
-                  className="w-full border border-gray-200 rounded-lg px-2 py-2 text-sm outline-none focus:border-blue-400" placeholder="전화번호" />
-              ) : (
-                <div className="flex items-center gap-1.5">
-                  <span className="text-sm text-gray-800">{form.phone || '-'}</span>
-                  {form.phone && <a href={`tel:${form.phone}`} className="text-blue-500 hover:text-blue-600"><Phone size={13} /></a>}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* 주소 */}
+        {/* 상태 + 오픈일 */}
+        <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-xs text-gray-500 mb-1">주소 / 희망지역</label>
+            <label className="block text-xs text-gray-500 mb-1">상태</label>
             {editing ? (
-              <div className="flex gap-1.5">
-                <input value={form.address} onChange={e => set('address', e.target.value)}
-                  className="flex-1 min-w-0 border border-gray-200 rounded-lg px-2 py-2 text-sm outline-none focus:border-blue-400" placeholder="주소 또는 희망지역" />
-                <button
-                  type="button"
-                  onClick={handleGeocode}
-                  disabled={geocoding || !form.address}
-                  title="주소로 핀 위치 갱신"
-                  className="flex-none px-2.5 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-600 rounded-lg transition-colors disabled:opacity-40"
-                >
-                  {geocoding ? <Loader2 size={15} className="animate-spin" /> : <MapPin size={15} />}
-                </button>
-              </div>
+              <select
+                value={form.status}
+                onChange={e => set('status', e.target.value as StoreStatus)}
+                className="w-full border border-gray-200 rounded-lg px-2 py-2 text-sm outline-none focus:border-blue-400"
+              >
+                {STATUSES.map(s => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
+              </select>
             ) : (
-              <div className="text-sm text-gray-800">
-                {form.address ? (
-                  addrVariants ? (
-                    <div className="space-y-0.5">
-                      {addrVariants.road && (
-                        <div><span className="text-xs text-gray-400 mr-1">도로명</span>{addrVariants.road}</div>
-                      )}
-                      {addrVariants.jibun && (
-                        <div><span className="text-xs text-gray-400 mr-1">지번&nbsp;&nbsp;</span>{addrVariants.jibun}</div>
-                      )}
-                      {!addrVariants.road && !addrVariants.jibun && form.address}
-                    </div>
-                  ) : form.address
-                ) : '-'}
+              <div>
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold text-white" style={{ backgroundColor: storeColor }}>
+                  {STATUS_LABELS[form.status]}
+                </span>
+                {form.status === 'candidate' && (
+                  <div className={`text-xs font-semibold mt-1 ${canOpen ? 'text-green-600' : 'text-red-600'}`}>
+                    출점 {canOpen ? '가능' : '불가'}
+                    {!canOpen && nearestName && nearestDistance !== undefined && (
+                      <span className="font-normal ml-1">— {nearestName} {formatDistance(nearestDistance)}</span>
+                    )}
+                  </div>
+                )}
               </div>
             )}
           </div>
-
-          {/* 브랜드 */}
           <div>
-            <label className="block text-xs text-gray-500 mb-1">브랜드</label>
+            <label className="block text-xs text-gray-500 mb-1">오픈일</label>
             {editing ? (
-              <div className="flex flex-wrap gap-2">
-                {brands.map(b => (
-                  <label key={b.id} className="flex items-center gap-1.5 text-sm cursor-pointer">
-                    <input type="checkbox" checked={form.brandIds.includes(b.id)} onChange={() => toggleBrand(b.id)} className="rounded" />
-                    {b.name}
-                  </label>
-                ))}
-              </div>
+              <input type="date" value={form.openDate ?? ''} onChange={e => set('openDate', e.target.value)}
+                className="w-full border border-gray-200 rounded-lg px-2 py-2 text-sm outline-none focus:border-blue-400" />
             ) : (
-              <div className="flex flex-wrap gap-1.5">
-                {[...form.brandIds]
-                  .sort((a, b) => brands.findIndex(br => br.id === a) - brands.findIndex(br => br.id === b))
-                  .map(id => {
-                    const brand = brands.find(b => b.id === id);
-                    return brand ? (
-                      <span key={id} className="px-2 py-0.5 bg-orange-100 text-orange-700 text-xs rounded-full font-medium">{brand.name}</span>
-                    ) : null;
-                  })}
-              </div>
-            )}
-          </div>
-
-          {/* 유입경로 */}
-          <div>
-            <label className="block text-xs text-gray-500 mb-1">유입경로</label>
-            {editing ? (
-              <input value={form.inflowSource ?? ''} onChange={e => set('inflowSource', e.target.value)}
-                className="w-full border border-gray-200 rounded-lg px-2 py-2 text-sm outline-none focus:border-blue-400" placeholder="예: 지인 소개, SNS" />
-            ) : (
-              <div className="text-sm text-gray-800">{form.inflowSource || '-'}</div>
+              <div className="text-sm text-gray-800">{form.openDate || '-'}</div>
             )}
           </div>
         </div>
 
-        {/* 메모 — 나머지 공간 채우기 */}
-        <div className="flex-1 flex flex-col px-4 py-3 min-h-0 border-t border-gray-100">
-          <label className="block text-xs text-gray-500 mb-1 flex-none">메모</label>
+        {/* 점주명 + 전화번호 */}
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-xs text-gray-500 mb-1">점주명</label>
+            {editing ? (
+              <input value={form.contactName ?? ''} onChange={e => set('contactName', e.target.value)}
+                className="w-full border border-gray-200 rounded-lg px-2 py-2 text-sm outline-none focus:border-blue-400" placeholder="이름" />
+            ) : (
+              <div className="text-sm text-gray-800">{form.contactName || '-'}</div>
+            )}
+          </div>
+          <div>
+            <label className="block text-xs text-gray-500 mb-1">전화번호</label>
+            {editing ? (
+              <input value={form.phone ?? ''} onChange={e => set('phone', formatPhone(e.target.value))}
+                className="w-full border border-gray-200 rounded-lg px-2 py-2 text-sm outline-none focus:border-blue-400" placeholder="전화번호" />
+            ) : (
+              <div className="flex items-center gap-1.5">
+                <span className="text-sm text-gray-800">{form.phone || '-'}</span>
+                {form.phone && <a href={`tel:${form.phone}`} className="text-blue-500 hover:text-blue-600"><Phone size={13} /></a>}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* 주소 */}
+        <div>
+          <label className="block text-xs text-gray-500 mb-1">주소 / 희망지역</label>
           {editing ? (
-            <textarea value={form.memo ?? ''} onChange={e => set('memo', e.target.value)}
-              className="flex-1 min-h-0 border border-gray-200 rounded-lg px-2 py-2 text-sm outline-none focus:border-blue-400 resize-none" placeholder="메모" />
+            <div className="flex gap-1.5">
+              <input value={form.address} onChange={e => set('address', e.target.value)}
+                className="flex-1 min-w-0 border border-gray-200 rounded-lg px-2 py-2 text-sm outline-none focus:border-blue-400" placeholder="주소 또는 희망지역" />
+              <button
+                type="button"
+                onClick={handleGeocode}
+                disabled={geocoding || !form.address}
+                title="주소로 핀 위치 갱신"
+                className="flex-none px-2.5 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-600 rounded-lg transition-colors disabled:opacity-40"
+              >
+                {geocoding ? <Loader2 size={15} className="animate-spin" /> : <MapPin size={15} />}
+              </button>
+            </div>
           ) : (
-            <div className="flex-1 min-h-0 overflow-y-auto text-sm text-gray-800 whitespace-pre-wrap">{form.memo || '-'}</div>
+            <div className="text-sm text-gray-800">
+              {form.address ? (
+                addrVariants ? (
+                  <div className="space-y-0.5">
+                    {addrVariants.road && (
+                      <div><span className="text-xs text-gray-400 mr-1">도로명</span>{addrVariants.road}</div>
+                    )}
+                    {addrVariants.jibun && (
+                      <div><span className="text-xs text-gray-400 mr-1">지번&nbsp;&nbsp;</span>{addrVariants.jibun}</div>
+                    )}
+                    {!addrVariants.road && !addrVariants.jibun && form.address}
+                  </div>
+                ) : form.address
+              ) : '-'}
+            </div>
           )}
         </div>
+
+        {/* 브랜드 */}
+        <div>
+          <label className="block text-xs text-gray-500 mb-1">브랜드</label>
+          {editing ? (
+            <div className="flex flex-wrap gap-2">
+              {brands.map(b => (
+                <label key={b.id} className="flex items-center gap-1.5 text-sm cursor-pointer">
+                  <input type="checkbox" checked={form.brandIds.includes(b.id)} onChange={() => toggleBrand(b.id)} className="rounded" />
+                  {b.name}
+                </label>
+              ))}
+            </div>
+          ) : (
+            <div className="flex flex-wrap gap-1.5">
+              {[...form.brandIds]
+                .sort((a, b) => brands.findIndex(br => br.id === a) - brands.findIndex(br => br.id === b))
+                .map(id => {
+                  const brand = brands.find(b => b.id === id);
+                  return brand ? (
+                    <span key={id} className="px-2 py-0.5 bg-orange-100 text-orange-700 text-xs rounded-full font-medium">{brand.name}</span>
+                  ) : null;
+                })}
+            </div>
+          )}
+        </div>
+
+        {/* 메모 */}
+        <div>
+          <label className="block text-xs text-gray-500 mb-1">메모</label>
+          {editing ? (
+            <textarea value={form.memo ?? ''} onChange={e => set('memo', e.target.value)}
+              className="w-full h-24 border border-gray-200 rounded-lg px-2 py-2 text-sm outline-none focus:border-blue-400 resize-none" placeholder="메모" />
+          ) : (
+            <div className="h-24 overflow-y-auto text-sm text-gray-800 whitespace-pre-wrap">{form.memo || '-'}</div>
+          )}
+        </div>
+
+        {/* 사업자등록증 */}
+        <div className="border-t border-gray-100 pt-3">
+          <label className="block text-xs text-gray-500 mb-1.5">사업자등록증</label>
+          {editing ? (
+            <div className="space-y-1.5">
+              {form.bizLicenseUrl && (
+                <div className="text-xs text-green-600 flex items-center gap-1">
+                  <Check size={12} />현재 파일 있음
+                </div>
+              )}
+              <label className="flex items-center gap-2 cursor-pointer px-3 py-2 border border-dashed border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+                <Upload size={15} className="text-gray-400 flex-none" />
+                <span className="text-sm text-gray-500 truncate">
+                  {bizFile ? bizFile.name : 'PDF 또는 이미지 선택'}
+                </span>
+                <input type="file" accept=".pdf,image/*" className="hidden"
+                  onChange={e => setBizFile(e.target.files?.[0] ?? null)} />
+              </label>
+            </div>
+          ) : (
+            form.bizLicenseUrl ? (
+              <div className="flex items-center gap-2">
+                <a href={form.bizLicenseUrl} target="_blank" rel="noopener noreferrer"
+                  className="text-sm text-blue-600 hover:underline flex-1 truncate">
+                  미리보기
+                </a>
+                <a href={form.bizLicenseUrl} download
+                  className="flex-none text-xs px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg border border-blue-200 transition-colors">
+                  다운로드
+                </a>
+              </div>
+            ) : (
+              <div className="text-sm text-gray-400">등록된 파일 없음</div>
+            )
+          )}
+        </div>
+
       </div>
 
       {/* 하단 버튼 */}
