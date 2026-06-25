@@ -338,9 +338,9 @@ export function StorePanel({ store, brands, allStores, onUpdate, onDelete, onClo
           <label className="block text-xs text-gray-500 mb-1">메모</label>
           {editing ? (
             <textarea value={form.memo ?? ''} onChange={e => set('memo', e.target.value)}
-              className="w-full h-24 border border-gray-200 rounded-lg px-2 py-2 text-sm outline-none focus:border-blue-400 resize-none" placeholder="메모" />
+              className="w-full h-40 border border-gray-200 rounded-lg px-2 py-2 text-sm outline-none focus:border-blue-400 resize-none" placeholder="메모" />
           ) : (
-            <div className="h-24 overflow-y-auto text-sm text-gray-800 whitespace-pre-wrap">{form.memo || '-'}</div>
+            <div className="h-40 overflow-y-auto text-sm text-gray-800 whitespace-pre-wrap">{form.memo || '-'}</div>
           )}
         </div>
 
