@@ -254,7 +254,7 @@ export function KakaoMap({ stores, brands, selectedBrandId, verdict, selectedSto
       const label = (showLabel && group.length === 1) ? getShortName(primary.name) : undefined;
       if (logoUrl) {
         const { el, yAnchor } = makeLogoPinElement(logoUrl, color, group.length, () => {
-          if (rulerModeRef.current) { addRulerPointRef.current(primary.lat, primary.lng); return; }
+          if (rulerModeRef.current) { markerJustClickedRef.current = true; addRulerPointRef.current(primary.lat, primary.lng); return; }
           markerJustClickedRef.current = true; onStoreClick(group[0]);
         }, label);
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
