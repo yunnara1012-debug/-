@@ -108,8 +108,9 @@ export function KakaoMap({ stores, brands, selectedBrandId, verdict, selectedSto
   const markerJustClickedRef = useRef(false);
   const [mapZoom, setMapZoom] = useState(8);
 
-  // 자 (거리 측정) 관련
+  // 자 (거리 측정) 관련 — 렌더 타임에 즉시 동기화 (useEffect 지연 없음)
   const rulerModeRef = useRef(rulerMode);
+  rulerModeRef.current = rulerMode;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const rulerLineRef = useRef<any>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -159,7 +160,6 @@ export function KakaoMap({ stores, brands, selectedBrandId, verdict, selectedSto
   }, []);
 
   useEffect(() => {
-    rulerModeRef.current = rulerMode;
     if (!rulerMode) clearRuler();
   }, [rulerMode, clearRuler]);
 

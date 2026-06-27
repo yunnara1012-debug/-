@@ -11,8 +11,7 @@ import { SearchBar } from '@/components/search/SearchBar';
 import { VerdictPanel } from '@/components/panel/VerdictPanel';
 import { StorePanel } from '@/components/panel/StorePanel';
 import { StoreListPanel } from '@/components/panel/StoreListPanel';
-import { ImportPanel } from '@/components/panel/ImportPanel';
-import { Download, Store as StoreIcon, List, MoreVertical, Plus, SlidersHorizontal, X, Ruler } from 'lucide-react';
+import { Store as StoreIcon, List, MoreVertical, Plus, SlidersHorizontal, X, Ruler } from 'lucide-react';
 
 function loadFromStorage<T>(key: string, fallback: T): T {
   if (typeof window === 'undefined') return fallback;
@@ -56,7 +55,6 @@ export default function Home() {
   const [selectedStore, setSelectedStore] = useState<Store | null>(null);
   const [highlightedStore, setHighlightedStore] = useState<Store | null>(null);
   const [verdict, setVerdict] = useState<VerdictResult | null>(null);
-  const [showImportPanel, setShowImportPanel] = useState(false);
   const [showStoreList, setShowStoreList] = useState(false);
   const [showMore, setShowMore] = useState(false);
   const [showFilter, setShowFilter] = useState(false);
@@ -234,30 +232,22 @@ export default function Home() {
           </button>
 
           {/* 거리 측정 */}
+          {/* 거리 측정 자 */}
           <button
             onClick={() => setRulerMode(v => !v)}
-            className={`flex items-center gap-1 px-2 py-1.5 text-xs rounded-md font-medium transition-colors whitespace-nowrap ${rulerMode ? 'bg-red-100 text-red-600' : 'bg-gray-100 hover:bg-gray-200 text-gray-600'}`}
+            className={`flex items-center gap-1.5 px-3 py-2 text-xs rounded-md font-medium transition-colors whitespace-nowrap ${rulerMode ? 'bg-red-100 text-red-600' : 'bg-gray-100 hover:bg-gray-200 text-gray-600'}`}
           >
-            <Ruler size={12} />
-            <span className="hidden sm:inline">자</span>
+            <Ruler size={14} />
+            자
           </button>
 
-          {/* 매장 추가 */}
+          {/* 매장등록 */}
           <button
             onClick={handleAddStore}
             className="flex items-center gap-1 px-2 py-1.5 text-xs bg-blue-500 hover:bg-blue-600 text-white rounded-md font-medium transition-colors whitespace-nowrap"
           >
             <StoreIcon size={12} />
-            <span className="hidden sm:inline">매장</span>
-          </button>
-
-          {/* 불러오기 - 데스크톱만 */}
-          <button
-            onClick={() => setShowImportPanel(true)}
-            className="hidden md:flex items-center gap-1 px-2 py-1.5 text-xs bg-green-500 hover:bg-green-600 text-white rounded-md font-medium transition-colors whitespace-nowrap"
-          >
-            <Download size={12} />
-            불러오기
+            <span className="hidden sm:inline">매장등록</span>
           </button>
 
           {/* 더보기 */}
@@ -276,13 +266,6 @@ export default function Home() {
                 >
                   <Plus size={13} />
                   브랜드 추가
-                </button>
-                <button
-                  onClick={() => { setShowImportPanel(true); setShowMore(false); }}
-                  className="md:hidden w-full flex items-center gap-2 px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-50 rounded-lg"
-                >
-                  <Download size={13} />
-                  불러오기
                 </button>
               </div>
             )}
@@ -420,16 +403,7 @@ export default function Home() {
         )}
       </main>
 
-      {/* Import Panel */}
-      {showImportPanel && (
-        <ImportPanel
-          brands={sortedBrands}
-          selectedBrandId={selectedBrandId}
-          existingStores={stores}
-          onApprove={(store) => { setStores(prev => [...prev, store]); upsertStore(store); }}
-          onClose={() => setShowImportPanel(false)}
-        />
-      )}
+
     </div>
   );
 }
