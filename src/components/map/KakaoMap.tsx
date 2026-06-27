@@ -14,6 +14,7 @@ interface KakaoMapProps {
   highlightedStore?: Store | null;
   onStoreClick: (store: Store) => void;
   onMapClick?: () => void;
+  rulerMode: boolean;
 }
 
 function getShortName(name: string): string {
@@ -21,6 +22,9 @@ function getShortName(name: string): string {
   return idx !== -1 ? name.slice(idx + 1) : (name.length > 5 ? name.slice(-4) : name);
 }
 
+function formatDist(m: number): string {
+  return m >= 1000 ? `${(m / 1000).toFixed(1)}km` : `${Math.round(m)}m`;
+}
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH || '';
 const BRAND_LOGOS: Record<string, string> = {
@@ -29,7 +33,6 @@ const BRAND_LOGOS: Record<string, string> = {
 };
 
 function getBrandLogo(group: Store[], currentBrands: Brand[], activeBrandId = 'all'): string | null {
-  // 선택된 브랜드 필터 우선, 그 다음 currentBrands 배열 순서(전역 순서) 따름
   const ordered = activeBrandId !== 'all'
     ? [...currentBrands.filter(b => b.id === activeBrandId), ...currentBrands.filter(b => b.id !== activeBrandId)]
     : currentBrands;
@@ -69,7 +72,7 @@ function makeLogoPinElement(logoUrl: string, color: string, count: number, onCli
   pointer.style.cssText = `width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:9px solid ${color};pointer-events:none;`;
   el.appendChild(pointer);
 
-  const labelHeight = 20; // margin-top(2) + content(~18)
+  const labelHeight = 20;
   if (label) {
     const text = document.createElement('div');
     text.style.cssText = `margin-top:2px;background:${color};color:white;padding:2px 5px;border-radius:5px;font-size:10px;font-weight:700;white-space:nowrap;pointer-events:none;`;
@@ -79,7 +82,6 @@ function makeLogoPinElement(logoUrl: string, color: string, count: number, onCli
 
   el.addEventListener('click', (e) => { e.stopPropagation(); onClick(); });
 
-  // pin height = circle(36) + pointer(9) = 45; pointer tip is at bottom of pin
   const pinHeight = 45;
   const totalHeight = pinHeight + (label ? labelHeight : 0);
   const yAnchor = 1 - (label ? labelHeight : 0) / totalHeight;
@@ -87,7 +89,7 @@ function makeLogoPinElement(logoUrl: string, color: string, count: number, onCli
   return { el, yAnchor };
 }
 
-export function KakaoMap({ stores, brands, selectedBrandId, verdict, selectedStoreId, highlightedStore, onStoreClick, onMapClick }: KakaoMapProps) {
+export function KakaoMap({ stores, brands, selectedBrandId, verdict, selectedStoreId, highlightedStore, onStoreClick, onMapClick, rulerMode }: KakaoMapProps) {
   const mapRef = useRef<kakao.maps.Map | null>(null);
   const markersRef = useRef<{ remove: () => void; stores: Store[] }[]>([]);
   const circlesRef = useRef<kakao.maps.Circle[]>([]);
@@ -105,6 +107,16 @@ export function KakaoMap({ stores, brands, selectedBrandId, verdict, selectedSto
   const selectedBrandIdRef = useRef(selectedBrandId);
   const markerJustClickedRef = useRef(false);
   const [mapZoom, setMapZoom] = useState(8);
+
+  // 자 (거리 측정) 관련
+  const rulerModeRef = useRef(rulerMode);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const rulerLineRef = useRef<any>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const rulerOverlaysRef = useRef<any[]>([]);
+  const rulerPointsRef = useRef<{ lat: number; lng: number }[]>([]);
+  const [rulerResult, setRulerResult] = useState<{ distanceM: number; walkMin: number; bikeMin: number } | null>(null);
+  const [rulerStep, setRulerStep] = useState(0); // 0: 대기, 1: 시작점 찍음, 2: 완료
 
   useEffect(() => { storesRef.current = stores; }, [stores]);
   useEffect(() => { brandsRef.current = brands; }, [brands]);
@@ -136,6 +148,20 @@ export function KakaoMap({ stores, brands, selectedBrandId, verdict, selectedSto
       searchCircleRef.current = null;
     }
   }, []);
+
+  const clearRuler = useCallback(() => {
+    if (rulerLineRef.current) { rulerLineRef.current.setMap(null); rulerLineRef.current = null; }
+    rulerOverlaysRef.current.forEach(o => o.setMap(null));
+    rulerOverlaysRef.current = [];
+    rulerPointsRef.current = [];
+    setRulerResult(null);
+    setRulerStep(0);
+  }, []);
+
+  useEffect(() => {
+    rulerModeRef.current = rulerMode;
+    if (!rulerMode) clearRuler();
+  }, [rulerMode, clearRuler]);
 
   const groupStores = useCallback((storeList: Store[]) => {
     const groups: Store[][] = [];
@@ -256,8 +282,64 @@ export function KakaoMap({ stores, brands, selectedBrandId, verdict, selectedSto
         kakao.maps.event.addListener(map, 'zoom_changed', () => {
           setMapZoom(map.getLevel());
         });
-        kakao.maps.event.addListener(map, 'click', () => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        kakao.maps.event.addListener(map, 'click', (mouseEvent: any) => {
           if (markerJustClickedRef.current) { markerJustClickedRef.current = false; return; }
+
+          if (rulerModeRef.current) {
+            const lat = mouseEvent.latLng.getLat();
+            const lng = mouseEvent.latLng.getLng();
+            const pts = rulerPointsRef.current;
+
+            if (pts.length >= 2) {
+              // 이미 완성된 상태면 초기화 후 새 시작점
+              if (rulerLineRef.current) { rulerLineRef.current.setMap(null); rulerLineRef.current = null; }
+              rulerOverlaysRef.current.forEach(o => o.setMap(null));
+              rulerOverlaysRef.current = [];
+              rulerPointsRef.current = [{ lat, lng }];
+              setRulerResult(null);
+              setRulerStep(1);
+            } else {
+              rulerPointsRef.current = [...pts, { lat, lng }];
+              if (pts.length === 0) setRulerStep(1);
+            }
+
+            // 점 표시
+            const dotEl = document.createElement('div');
+            dotEl.style.cssText = 'width:10px;height:10px;border-radius:50%;background:#EF4444;border:2px solid white;box-shadow:0 1px 4px rgba(0,0,0,0.5);transform:translate(-50%,-50%);';
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const dotOverlay = new (kakao.maps as any).CustomOverlay({
+              content: dotEl,
+              position: new kakao.maps.LatLng(lat, lng),
+              zIndex: 15,
+            });
+            dotOverlay.setMap(map);
+            rulerOverlaysRef.current.push(dotOverlay);
+
+            const updatedPts = rulerPointsRef.current;
+            if (updatedPts.length === 2) {
+              // 선 그리기
+              if (rulerLineRef.current) rulerLineRef.current.setMap(null);
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              rulerLineRef.current = new (kakao.maps as any).Polyline({
+                map,
+                path: updatedPts.map(p => new kakao.maps.LatLng(p.lat, p.lng)),
+                strokeWeight: 2,
+                strokeColor: '#EF4444',
+                strokeOpacity: 1,
+                strokeStyle: 'solid',
+              });
+              const distM = haversineDistance(updatedPts[0].lat, updatedPts[0].lng, updatedPts[1].lat, updatedPts[1].lng);
+              setRulerResult({
+                distanceM: distM,
+                walkMin: Math.max(1, Math.round(distM / 80)),
+                bikeMin: Math.max(1, Math.round(distM / 300)),
+              });
+              setRulerStep(2);
+            }
+            return;
+          }
+
           onMapClickRef.current?.();
         });
         renderStores(map, storesRef.current, brandsRef.current, 8, undefined, selectedBrandIdRef.current);
@@ -333,7 +415,6 @@ export function KakaoMap({ stores, brands, selectedBrandId, verdict, selectedSto
       fillOpacity: 0.07,
     });
 
-    // 도/시 경계선
     if (verdict.region) {
       const points = getProvincePolygon(verdict.region);
       if (points) {
@@ -371,6 +452,40 @@ export function KakaoMap({ stores, brands, selectedBrandId, verdict, selectedSto
   }, [clearOverlays]);
 
   return (
-    <div ref={containerRef} id="kakao-map" className="w-full h-full" style={{ minHeight: '300px' }} />
+    <div className="relative w-full h-full">
+      <div
+        ref={containerRef}
+        id="kakao-map"
+        className="w-full h-full"
+        style={{ minHeight: '300px', cursor: rulerMode ? 'crosshair' : undefined }}
+      />
+
+      {/* 자 모드 안내 툴팁 */}
+      {rulerMode && rulerStep < 2 && (
+        <div className="absolute top-3 left-1/2 -translate-x-1/2 bg-black/65 text-white text-xs rounded-lg px-3 py-1.5 z-50 pointer-events-none whitespace-nowrap">
+          {rulerStep === 0 ? '📍 시작 지점을 클릭하세요' : '📍 끝 지점을 클릭하세요'}
+        </div>
+      )}
+
+      {/* 거리 결과 카드 */}
+      {rulerResult && (
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-white rounded-xl shadow-xl border border-gray-100 px-4 py-3 z-50 text-sm min-w-[170px]">
+          <div className="grid grid-cols-2 gap-x-8 gap-y-1 mb-3">
+            <span className="text-gray-500">총거리</span>
+            <span className="font-bold text-pink-500 text-right">{formatDist(rulerResult.distanceM)}</span>
+            <span className="text-gray-500">도보</span>
+            <span className="font-semibold text-right">{rulerResult.walkMin}분</span>
+            <span className="text-gray-500">자전거</span>
+            <span className="font-semibold text-right">{rulerResult.bikeMin}분</span>
+          </div>
+          <button
+            onClick={clearRuler}
+            className="w-full text-xs text-gray-500 border border-gray-200 rounded-lg py-1.5 hover:bg-gray-50 transition-colors"
+          >
+            🗑 지우기
+          </button>
+        </div>
+      )}
+    </div>
   );
 }

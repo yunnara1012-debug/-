@@ -12,7 +12,7 @@ import { VerdictPanel } from '@/components/panel/VerdictPanel';
 import { StorePanel } from '@/components/panel/StorePanel';
 import { StoreListPanel } from '@/components/panel/StoreListPanel';
 import { ImportPanel } from '@/components/panel/ImportPanel';
-import { Download, Store as StoreIcon, List, MoreVertical, Plus, SlidersHorizontal, X } from 'lucide-react';
+import { Download, Store as StoreIcon, List, MoreVertical, Plus, SlidersHorizontal, X, Ruler } from 'lucide-react';
 
 function loadFromStorage<T>(key: string, fallback: T): T {
   if (typeof window === 'undefined') return fallback;
@@ -62,6 +62,7 @@ export default function Home() {
   const [showFilter, setShowFilter] = useState(false);
   const [filterProvince, setFilterProvince] = useState('');
   const [filterStatuses, setFilterStatuses] = useState<StoreStatus[]>([]);
+  const [rulerMode, setRulerMode] = useState(false);
 
   useEffect(() => { localStorage.setItem('fm-stores', JSON.stringify(stores)); }, [stores]);
   useEffect(() => { localStorage.setItem('fm-brands', JSON.stringify(brands)); }, [brands]);
@@ -232,6 +233,15 @@ export default function Home() {
             <span className="hidden sm:inline">{showStoreList ? '목록접기' : '목록보기'}</span>
           </button>
 
+          {/* 거리 측정 */}
+          <button
+            onClick={() => setRulerMode(v => !v)}
+            className={`flex items-center gap-1 px-2 py-1.5 text-xs rounded-md font-medium transition-colors whitespace-nowrap ${rulerMode ? 'bg-red-100 text-red-600' : 'bg-gray-100 hover:bg-gray-200 text-gray-600'}`}
+          >
+            <Ruler size={12} />
+            <span className="hidden sm:inline">자</span>
+          </button>
+
           {/* 매장 추가 */}
           <button
             onClick={handleAddStore}
@@ -375,6 +385,7 @@ export default function Home() {
           highlightedStore={highlightedStore}
           onStoreClick={handleStoreClick}
           onMapClick={handleClosePanel}
+          rulerMode={rulerMode}
         />
 
         {/* Verdict Panel */}
