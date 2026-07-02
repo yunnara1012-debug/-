@@ -402,6 +402,30 @@ export function KakaoMap({ stores, brands, selectedBrandId, verdict, selectedSto
     const map = mapRef.current;
     const latlng = new kakao.maps.LatLng(verdict.searchLat, verdict.searchLng);
     map.panTo(latlng);
+    if (verdict.zoomLevel !== undefined) map.setLevel(verdict.zoomLevel);
+
+    // 지역 단위 검색(경기도, 인천 등)이면 마커·원 없이 지도 이동만
+    if (verdict.isRegionSearch) {
+      if (verdict.region) {
+        const points = getProvincePolygon(verdict.region);
+        if (points) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const polygon = new (kakao.maps as any).Polygon({
+            path: points.map(([lat, lng]) => new kakao.maps.LatLng(lat, lng)),
+            strokeWeight: 2,
+            strokeColor: '#F97316',
+            strokeOpacity: 0.9,
+            strokeStyle: 'dash',
+            fillColor: '#F97316',
+            fillOpacity: 0.06,
+            zIndex: 1,
+          });
+          polygon.setMap(map);
+          provinceRectRef.current = polygon;
+        }
+      }
+      return;
+    }
 
     const svgUrl = makeSearchMarkerSvg();
     const markerImage = new kakao.maps.MarkerImage(svgUrl, new kakao.maps.Size(36, 44), { offset: new kakao.maps.Point(18, 44) });

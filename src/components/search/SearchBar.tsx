@@ -17,7 +17,30 @@ interface Suggestion {
   lat: number;
   lng: number;
   store?: Store;
+  zoomLevel?: number;
+  isRegionSearch?: boolean;
 }
+
+const REGION_MAP: Record<string, { lat: number; lng: number; level: number }> = {
+  '서울특별시':     { lat: 37.5665, lng: 126.9780, level: 7 },
+  '부산광역시':     { lat: 35.1796, lng: 129.0756, level: 8 },
+  '인천광역시':     { lat: 37.4563, lng: 126.7052, level: 8 },
+  '대구광역시':     { lat: 35.8714, lng: 128.6014, level: 8 },
+  '대전광역시':     { lat: 36.3504, lng: 127.3845, level: 8 },
+  '광주광역시':     { lat: 35.1595, lng: 126.8526, level: 8 },
+  '울산광역시':     { lat: 35.5384, lng: 129.3114, level: 8 },
+  '세종특별자치시': { lat: 36.4801, lng: 127.2890, level: 8 },
+  '경기도':         { lat: 37.4138, lng: 127.2183, level: 10 },
+  '강원도':         { lat: 37.8228, lng: 128.1555, level: 10 },
+  '충청북도':       { lat: 36.6357, lng: 127.4916, level: 10 },
+  '충청남도':       { lat: 36.5184, lng: 126.8000, level: 10 },
+  '전라북도':       { lat: 35.7175, lng: 127.1530, level: 10 },
+  '전북특별자치도': { lat: 35.7175, lng: 127.1530, level: 10 },
+  '전라남도':       { lat: 34.8679, lng: 126.9910, level: 10 },
+  '경상북도':       { lat: 36.4919, lng: 128.8889, level: 10 },
+  '경상남도':       { lat: 35.4606, lng: 128.2132, level: 10 },
+  '제주특별자치도': { lat: 33.4890, lng: 126.4983, level: 9 },
+};
 
 export function SearchBar({ stores, onVerdict, onSelectStore }: Props) {
   const [query, setQuery] = useState('');
@@ -31,8 +54,16 @@ export function SearchBar({ stores, onVerdict, onSelectStore }: Props) {
   const searchKakao = useCallback(async (q: string): Promise<Suggestion[]> => {
     if (!q.trim() || typeof kakao === 'undefined') return [];
 
-    // "경기 군포" → "경기도 군포" 처럼 도 약어 자동 확장
+    // 약어 → 정식 행정구역명 변환 (도 + 광역시/특별시 모두)
     const expand = (s: string) => s
+      .replace(/^서울(\s|$)/, '서울특별시$1')
+      .replace(/^부산(\s|$)/, '부산광역시$1')
+      .replace(/^인천(\s|$)/, '인천광역시$1')
+      .replace(/^대구(\s|$)/, '대구광역시$1')
+      .replace(/^대전(\s|$)/, '대전광역시$1')
+      .replace(/^광주(\s|$)/, '광주광역시$1')
+      .replace(/^울산(\s|$)/, '울산광역시$1')
+      .replace(/^세종(\s|$)/, '세종특별자치시$1')
       .replace(/^경기(\s|$)/, '경기도$1')
       .replace(/^강원(\s|$)/, '강원도$1')
       .replace(/^충북(\s|$)/, '충청북도$1')
@@ -44,6 +75,20 @@ export function SearchBar({ stores, onVerdict, onSelectStore }: Props) {
       .replace(/^제주(\s|$)/, '제주특별자치도$1');
 
     const normalized = expand(q.trim());
+
+    // 광역/도 단위 이름 단독 입력이면 고정 좌표로 즉시 반환
+    const regionHit = REGION_MAP[normalized];
+    if (regionHit) {
+      return [{
+        type: 'place' as const,
+        placeName: normalized,
+        address: normalized,
+        lat: regionHit.lat,
+        lng: regionHit.lng,
+        zoomLevel: regionHit.level,
+        isRegionSearch: true,
+      }];
+    }
 
     return new Promise((resolve) => {
       const geocoder = new kakao.maps.services.Geocoder();
@@ -168,7 +213,7 @@ export function SearchBar({ stores, onVerdict, onSelectStore }: Props) {
     return () => clearTimeout(debounceRef.current);
   }, [query, searchKakao, stores]);
 
-  const executeVerdict = useCallback((lat: number, lng: number, placeName?: string, address?: string) => {
+  const executeVerdict = useCallback((lat: number, lng: number, placeName?: string, address?: string, zoomLevel?: number, isRegionSearch?: boolean) => {
     setLoading(true);
     setShowSuggestions(false);
 
@@ -188,7 +233,7 @@ export function SearchBar({ stores, onVerdict, onSelectStore }: Props) {
     const searchAddress = address ?? placeName;
 
     if (typeof kakao === 'undefined') {
-      onVerdict({ canOpen, nearestStore, nearestDistance: nearestDistance === Infinity ? undefined : nearestDistance, searchLat: lat, searchLng: lng, searchAddress });
+      onVerdict({ canOpen, nearestStore, nearestDistance: nearestDistance === Infinity ? undefined : nearestDistance, searchLat: lat, searchLng: lng, searchAddress, zoomLevel, isRegionSearch });
       setLoading(false);
       return;
     }
@@ -206,6 +251,8 @@ export function SearchBar({ stores, onVerdict, onSelectStore }: Props) {
         searchLng: lng,
         region,
         searchAddress,
+        zoomLevel,
+        isRegionSearch,
       });
       setLoading(false);
     });
@@ -218,7 +265,7 @@ export function SearchBar({ stores, onVerdict, onSelectStore }: Props) {
     if (s.type === 'store' && s.store && onSelectStore) {
       onSelectStore(s.store);
     } else {
-      executeVerdict(s.lat, s.lng, s.placeName, s.address);
+      executeVerdict(s.lat, s.lng, s.placeName, s.address, s.zoomLevel, s.isRegionSearch);
     }
   }, [onSelectStore, executeVerdict]);
 

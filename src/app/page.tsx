@@ -372,7 +372,7 @@ export default function Home() {
         />
 
         {/* Verdict Panel */}
-        {verdict && !selectedStore && (
+        {verdict && !selectedStore && !verdict.isRegionSearch && (
           <VerdictPanel
             verdict={verdict}
             onCreatePin={handleAddStore}

@@ -21,7 +21,6 @@ export interface Store {
   memo?: string;
   inflowSource?: string;
   brandIds: string[];
-  bizLicenseUrl?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -58,4 +57,6 @@ export interface VerdictResult {
   searchLng: number;
   region?: string;
   searchAddress?: string;
+  zoomLevel?: number;
+  isRegionSearch?: boolean;
 }
