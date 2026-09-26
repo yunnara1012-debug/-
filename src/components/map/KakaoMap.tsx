@@ -33,6 +33,14 @@ const BRAND_LOGOS: Record<string, string> = {
   '명가 들기름 김치찜': `${BASE}/logos/myeongga.png`,
 };
 
+function normalizeKey(s: string): string {
+  return s.replace(/\s+/g, '');
+}
+
+const BRAND_LOGOS_NORMALIZED: Record<string, string> = Object.fromEntries(
+  Object.entries(BRAND_LOGOS).map(([k, v]) => [normalizeKey(k), v])
+);
+
 function getBrandLogo(group: Store[], currentBrands: Brand[], activeBrandId = 'all'): string | null {
   const ordered = activeBrandId !== 'all'
     ? [...currentBrands.filter(b => b.id === activeBrandId), ...currentBrands.filter(b => b.id !== activeBrandId)]
@@ -41,8 +49,8 @@ function getBrandLogo(group: Store[], currentBrands: Brand[], activeBrandId = 'a
   for (const brand of ordered) {
     if (group.some(store => store.brandIds.includes(brand.id))) {
       if (brand.logoUrl) return brand.logoUrl;
-      const key = brand.keyword || brand.name;
-      if (BRAND_LOGOS[key]) return BRAND_LOGOS[key];
+      const key = normalizeKey(brand.keyword || brand.name);
+      if (BRAND_LOGOS_NORMALIZED[key]) return BRAND_LOGOS_NORMALIZED[key];
     }
   }
   return null;
@@ -68,18 +76,23 @@ function makeLogoPinElement(logoUrl: string, color: string, count: number, onCli
     circle.appendChild(badge);
   }
 
-  if (extraBrandCount > 0) {
-    const brandBadge = document.createElement('div');
-    brandBadge.style.cssText = 'position:absolute;bottom:-3px;left:-3px;min-width:16px;height:16px;background:#4B5563;border-radius:8px;color:white;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;border:2px solid white;padding:0 2px;box-sizing:border-box;';
-    brandBadge.textContent = `+${extraBrandCount}`;
-    circle.appendChild(brandBadge);
-  }
-
   el.appendChild(circle);
+
+  const pointerRow = document.createElement('div');
+  pointerRow.style.cssText = 'position:relative;display:flex;align-items:center;';
 
   const pointer = document.createElement('div');
   pointer.style.cssText = `width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:9px solid ${color};pointer-events:none;`;
-  el.appendChild(pointer);
+  pointerRow.appendChild(pointer);
+
+  if (extraBrandCount > 0) {
+    const brandBadge = document.createElement('div');
+    brandBadge.style.cssText = 'position:absolute;left:100%;top:50%;transform:translateY(-50%);margin-left:2px;min-width:16px;height:16px;background:#4B5563;border-radius:8px;color:white;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;border:2px solid white;padding:0 2px;box-sizing:border-box;white-space:nowrap;';
+    brandBadge.textContent = `+${extraBrandCount}`;
+    pointerRow.appendChild(brandBadge);
+  }
+
+  el.appendChild(pointerRow);
 
   const labelHeight = 20;
   if (label) {
@@ -262,7 +275,7 @@ export function KakaoMap({ stores, brands, selectedBrandId, verdict, selectedSto
       const logoUrl = getBrandLogo(group, currentBrands, activeBrandId);
       const label = (showLabel && group.length === 1) ? getShortName(primary.name) : undefined;
       const groupBrandCount = new Set(group.flatMap(s => s.brandIds)).size;
-      const extraBrandCount = groupBrandCount > 1 ? groupBrandCount - 1 : 0;
+      const extraBrandCount = (activeBrandId === 'all' && groupBrandCount > 1) ? groupBrandCount - 1 : 0;
       if (logoUrl) {
         const { el, yAnchor } = makeLogoPinElement(logoUrl, color, group.length, () => {
           if (rulerModeRef.current) { markerJustClickedRef.current = true; addRulerPointRef.current(primary.lat, primary.lng); return; }

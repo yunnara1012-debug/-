@@ -19,9 +19,11 @@ function readAsDataUrl(file: File): Promise<string> {
 export function BrandModal({ onCreate, onClose }: Props) {
   const [name, setName] = useState('');
   const [logoPreview, setLogoPreview] = useState<string | undefined>();
+  const [fileName, setFileName] = useState('');
 
   const handleFile = async (file: File | undefined) => {
     if (!file) return;
+    setFileName(file.name);
     setLogoPreview(await readAsDataUrl(file));
   };
 
@@ -56,12 +58,18 @@ export function BrandModal({ onCreate, onClose }: Props) {
               ? <img src={logoPreview} alt="" className="w-full h-full object-contain" />
               : <span className="text-[10px] text-gray-400">없음</span>}
           </div>
-          <input
-            type="file"
-            accept="image/*"
-            onChange={e => handleFile(e.target.files?.[0])}
-            className="text-xs flex-1"
-          />
+          <label className="flex-1 flex items-center gap-2 min-w-0">
+            <span className="flex-none px-3 py-1.5 text-xs font-medium bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-lg cursor-pointer transition-colors">
+              파일 선택
+            </span>
+            {fileName && <span className="text-xs text-gray-500 truncate">{fileName}</span>}
+            <input
+              type="file"
+              accept="image/*"
+              onChange={e => handleFile(e.target.files?.[0])}
+              className="hidden"
+            />
+          </label>
         </div>
 
         <div className="flex gap-2">
