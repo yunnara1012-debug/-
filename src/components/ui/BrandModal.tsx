@@ -1,9 +1,12 @@
 'use client';
 import { useState } from 'react';
+import type { Brand } from '@/types';
+import { getStaticBrandLogoUrl } from '@/lib/map/brandLogos';
 import { X } from 'lucide-react';
 
 interface Props {
-  onCreate: (name: string, logoUrl?: string) => void;
+  initialBrand?: Brand;
+  onSubmit: (name: string, logoUrl?: string) => void;
   onClose: () => void;
 }
 
@@ -16,9 +19,12 @@ function readAsDataUrl(file: File): Promise<string> {
   });
 }
 
-export function BrandModal({ onCreate, onClose }: Props) {
-  const [name, setName] = useState('');
-  const [logoPreview, setLogoPreview] = useState<string | undefined>();
+export function BrandModal({ initialBrand, onSubmit, onClose }: Props) {
+  const isEdit = !!initialBrand;
+  const [name, setName] = useState(initialBrand?.name ?? '');
+  const [logoPreview, setLogoPreview] = useState<string | undefined>(
+    initialBrand ? (initialBrand.logoUrl ?? getStaticBrandLogoUrl(initialBrand)) : undefined
+  );
   const [fileName, setFileName] = useState('');
 
   const handleFile = async (file: File | undefined) => {
@@ -29,14 +35,14 @@ export function BrandModal({ onCreate, onClose }: Props) {
 
   const handleSubmit = () => {
     if (!name.trim()) return;
-    onCreate(name.trim(), logoPreview);
+    onSubmit(name.trim(), logoPreview);
   };
 
   return (
     <div className="fixed inset-0 bg-black/40 z-[60] flex items-center justify-center px-4" onClick={onClose}>
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-5" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="font-semibold text-gray-800">브랜드 추가</h2>
+          <h2 className="font-semibold text-gray-800">{isEdit ? '브랜드 수정' : '브랜드 추가'}</h2>
           <button onClick={onClose} className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
             <X size={18} />
           </button>
@@ -79,7 +85,7 @@ export function BrandModal({ onCreate, onClose }: Props) {
             disabled={!name.trim()}
             className="flex-1 py-2 text-sm rounded-lg bg-blue-500 text-white hover:bg-blue-600 disabled:opacity-40 transition-colors"
           >
-            추가
+            {isEdit ? '저장' : '추가'}
           </button>
         </div>
       </div>

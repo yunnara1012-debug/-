@@ -8,11 +8,12 @@ import { STATUS_LABELS } from '@/lib/map/markerStyles';
 import { KakaoMap } from '@/components/map/KakaoMap';
 import { BrandSelector } from '@/components/ui/BrandSelector';
 import { BrandModal } from '@/components/ui/BrandModal';
+import { BrandManagePanel } from '@/components/ui/BrandManagePanel';
 import { SearchBar } from '@/components/search/SearchBar';
 import { VerdictPanel } from '@/components/panel/VerdictPanel';
 import { StorePanel } from '@/components/panel/StorePanel';
 import { StoreListPanel } from '@/components/panel/StoreListPanel';
-import { Store as StoreIcon, List, MoreVertical, Plus, SlidersHorizontal, X, Ruler } from 'lucide-react';
+import { Store as StoreIcon, List, MoreVertical, Plus, SlidersHorizontal, X, Ruler, Settings2 } from 'lucide-react';
 
 function loadFromStorage<T>(key: string, fallback: T): T {
   if (typeof window === 'undefined') return fallback;
@@ -63,6 +64,8 @@ export default function Home() {
   const [filterStatuses, setFilterStatuses] = useState<StoreStatus[]>([]);
   const [rulerMode, setRulerMode] = useState(false);
   const [showBrandModal, setShowBrandModal] = useState(false);
+  const [showBrandManage, setShowBrandManage] = useState(false);
+  const [editingBrand, setEditingBrand] = useState<Brand | null>(null);
 
   useEffect(() => { localStorage.setItem('fm-stores', JSON.stringify(stores)); }, [stores]);
   useEffect(() => { localStorage.setItem('fm-brands', JSON.stringify(brands)); }, [brands]);
@@ -189,6 +192,24 @@ export default function Home() {
     setShowBrandModal(false);
   }, [brands.length]);
 
+  const handleOpenBrandManage = useCallback(() => {
+    setShowMore(false);
+    setShowBrandManage(true);
+  }, []);
+
+  const handleUpdateBrand = useCallback((name: string, logoUrl?: string) => {
+    setEditingBrand(current => {
+      if (!current) return current;
+      setBrands(prev => {
+        const next = prev.map(b => b.id === current.id ? { ...b, name, keyword: name, logoUrl } : b);
+        const updated = next.find(b => b.id === current.id);
+        if (updated) upsertBrand(updated);
+        return next;
+      });
+      return null;
+    });
+  }, []);
+
   const handleClosePanel = useCallback(() => {
     setSelectedStore(null);
     setHighlightedStore(null);
@@ -267,10 +288,17 @@ export default function Home() {
               <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 min-w-[140px]">
                 <button
                   onClick={handleAddBrand}
-                  className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-50 rounded-lg"
+                  className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-50 rounded-t-lg"
                 >
                   <Plus size={13} />
                   브랜드 추가
+                </button>
+                <button
+                  onClick={handleOpenBrandManage}
+                  className="w-full flex items-center gap-2 px-3 py-2.5 text-sm text-gray-700 hover:bg-gray-50 rounded-b-lg border-t border-gray-100"
+                >
+                  <Settings2 size={13} />
+                  브랜드 관리
                 </button>
               </div>
             )}
@@ -409,7 +437,19 @@ export default function Home() {
       </main>
 
       {showBrandModal && (
-        <BrandModal onCreate={handleCreateBrand} onClose={() => setShowBrandModal(false)} />
+        <BrandModal onSubmit={handleCreateBrand} onClose={() => setShowBrandModal(false)} />
+      )}
+
+      {showBrandManage && (
+        <BrandManagePanel
+          brands={sortedBrands}
+          onEdit={(brand) => { setShowBrandManage(false); setEditingBrand(brand); }}
+          onClose={() => setShowBrandManage(false)}
+        />
+      )}
+
+      {editingBrand && (
+        <BrandModal initialBrand={editingBrand} onSubmit={handleUpdateBrand} onClose={() => setEditingBrand(null)} />
       )}
     </div>
   );

@@ -2,6 +2,7 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
 import type { Store, Brand, VerdictResult } from '@/types';
 import { makeMarkerSvg, makeSearchMarkerSvg, getStoreColor } from '@/lib/map/markerStyles';
+import { getStaticBrandLogoUrl } from '@/lib/map/brandLogos';
 import { haversineDistance } from '@/lib/geo/distance';
 import { getProvincePolygon } from '@/data/provinces';
 
@@ -26,21 +27,6 @@ function formatDist(m: number): string {
   return m >= 1000 ? `${(m / 1000).toFixed(1)}km` : `${Math.round(m)}m`;
 }
 
-const BASE = process.env.NEXT_PUBLIC_BASE_PATH || '';
-const BRAND_LOGOS: Record<string, string> = {
-  '호랑이족발': `${BASE}/logos/horangi.png`,
-  '천년아구찜': `${BASE}/logos/chunnyeon.png`,
-  '명가 들기름 김치찜': `${BASE}/logos/myeongga.png`,
-};
-
-function normalizeKey(s: string): string {
-  return s.replace(/\s+/g, '');
-}
-
-const BRAND_LOGOS_NORMALIZED: Record<string, string> = Object.fromEntries(
-  Object.entries(BRAND_LOGOS).map(([k, v]) => [normalizeKey(k), v])
-);
-
 function getBrandLogo(group: Store[], currentBrands: Brand[], activeBrandId = 'all'): string | null {
   const ordered = activeBrandId !== 'all'
     ? [...currentBrands.filter(b => b.id === activeBrandId), ...currentBrands.filter(b => b.id !== activeBrandId)]
@@ -49,8 +35,8 @@ function getBrandLogo(group: Store[], currentBrands: Brand[], activeBrandId = 'a
   for (const brand of ordered) {
     if (group.some(store => store.brandIds.includes(brand.id))) {
       if (brand.logoUrl) return brand.logoUrl;
-      const key = normalizeKey(brand.keyword || brand.name);
-      if (BRAND_LOGOS_NORMALIZED[key]) return BRAND_LOGOS_NORMALIZED[key];
+      const staticUrl = getStaticBrandLogoUrl(brand);
+      if (staticUrl) return staticUrl;
     }
   }
   return null;
