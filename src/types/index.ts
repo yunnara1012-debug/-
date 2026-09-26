@@ -5,6 +5,7 @@ export interface Brand {
   name: string;
   keyword: string;
   color?: string;
+  logoUrl?: string;
 }
 
 export interface Store {

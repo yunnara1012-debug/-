@@ -7,6 +7,7 @@ import { loadBrands, loadStores, upsertBrand, upsertBrands, upsertStore, upsertS
 import { STATUS_LABELS } from '@/lib/map/markerStyles';
 import { KakaoMap } from '@/components/map/KakaoMap';
 import { BrandSelector } from '@/components/ui/BrandSelector';
+import { BrandModal } from '@/components/ui/BrandModal';
 import { SearchBar } from '@/components/search/SearchBar';
 import { VerdictPanel } from '@/components/panel/VerdictPanel';
 import { StorePanel } from '@/components/panel/StorePanel';
@@ -61,6 +62,7 @@ export default function Home() {
   const [filterProvince, setFilterProvince] = useState('');
   const [filterStatuses, setFilterStatuses] = useState<StoreStatus[]>([]);
   const [rulerMode, setRulerMode] = useState(false);
+  const [showBrandModal, setShowBrandModal] = useState(false);
 
   useEffect(() => { localStorage.setItem('fm-stores', JSON.stringify(stores)); }, [stores]);
   useEffect(() => { localStorage.setItem('fm-brands', JSON.stringify(brands)); }, [brands]);
@@ -175,13 +177,16 @@ export default function Home() {
   }, []);
 
   const handleAddBrand = useCallback(() => {
-    const name = prompt('브랜드 이름을 입력하세요:');
-    if (!name?.trim()) return;
+    setShowMore(false);
+    setShowBrandModal(true);
+  }, []);
+
+  const handleCreateBrand = useCallback((name: string, logoUrl?: string) => {
     const color = BRAND_COLORS[brands.length % BRAND_COLORS.length];
-    const brand = { id: 'brand-' + Date.now(), name: name.trim(), keyword: name.trim(), color };
+    const brand: Brand = { id: 'brand-' + Date.now(), name, keyword: name, color, ...(logoUrl ? { logoUrl } : {}) };
     setBrands(prev => [...prev, brand]);
     upsertBrand(brand);
-    setShowMore(false);
+    setShowBrandModal(false);
   }, [brands.length]);
 
   const handleClosePanel = useCallback(() => {
@@ -403,7 +408,9 @@ export default function Home() {
         )}
       </main>
 
-
+      {showBrandModal && (
+        <BrandModal onCreate={handleCreateBrand} onClose={() => setShowBrandModal(false)} />
+      )}
     </div>
   );
 }

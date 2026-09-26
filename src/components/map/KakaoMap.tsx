@@ -30,6 +30,7 @@ const BASE = process.env.NEXT_PUBLIC_BASE_PATH || '';
 const BRAND_LOGOS: Record<string, string> = {
   '호랑이족발': `${BASE}/logos/horangi.png`,
   '천년아구찜': `${BASE}/logos/chunnyeon.png`,
+  '명가 들기름 김치찜': `${BASE}/logos/myeongga.png`,
 };
 
 function getBrandLogo(group: Store[], currentBrands: Brand[], activeBrandId = 'all'): string | null {
@@ -39,6 +40,7 @@ function getBrandLogo(group: Store[], currentBrands: Brand[], activeBrandId = 'a
 
   for (const brand of ordered) {
     if (group.some(store => store.brandIds.includes(brand.id))) {
+      if (brand.logoUrl) return brand.logoUrl;
       const key = brand.keyword || brand.name;
       if (BRAND_LOGOS[key]) return BRAND_LOGOS[key];
     }
@@ -46,7 +48,7 @@ function getBrandLogo(group: Store[], currentBrands: Brand[], activeBrandId = 'a
   return null;
 }
 
-function makeLogoPinElement(logoUrl: string, color: string, count: number, onClick: () => void, label?: string): { el: HTMLElement; yAnchor: number } {
+function makeLogoPinElement(logoUrl: string, color: string, count: number, onClick: () => void, label?: string, extraBrandCount = 0): { el: HTMLElement; yAnchor: number } {
   const el = document.createElement('div');
   el.style.cssText = 'position:relative;display:inline-flex;flex-direction:column;align-items:center;cursor:pointer;pointer-events:auto;filter:drop-shadow(0 3px 8px rgba(0,0,0,0.3))';
 
@@ -64,6 +66,13 @@ function makeLogoPinElement(logoUrl: string, color: string, count: number, onCli
     badge.style.cssText = 'position:absolute;top:-3px;right:-3px;min-width:16px;height:16px;background:#EF4444;border-radius:8px;color:white;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;border:2px solid white;padding:0 2px;box-sizing:border-box;';
     badge.textContent = String(count);
     circle.appendChild(badge);
+  }
+
+  if (extraBrandCount > 0) {
+    const brandBadge = document.createElement('div');
+    brandBadge.style.cssText = 'position:absolute;bottom:-3px;left:-3px;min-width:16px;height:16px;background:#4B5563;border-radius:8px;color:white;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;border:2px solid white;padding:0 2px;box-sizing:border-box;';
+    brandBadge.textContent = `+${extraBrandCount}`;
+    circle.appendChild(brandBadge);
   }
 
   el.appendChild(circle);
@@ -252,11 +261,13 @@ export function KakaoMap({ stores, brands, selectedBrandId, verdict, selectedSto
 
       const logoUrl = getBrandLogo(group, currentBrands, activeBrandId);
       const label = (showLabel && group.length === 1) ? getShortName(primary.name) : undefined;
+      const groupBrandCount = new Set(group.flatMap(s => s.brandIds)).size;
+      const extraBrandCount = groupBrandCount > 1 ? groupBrandCount - 1 : 0;
       if (logoUrl) {
         const { el, yAnchor } = makeLogoPinElement(logoUrl, color, group.length, () => {
           if (rulerModeRef.current) { markerJustClickedRef.current = true; addRulerPointRef.current(primary.lat, primary.lng); return; }
           markerJustClickedRef.current = true; onStoreClick(group[0]);
-        }, label);
+        }, label, extraBrandCount);
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const overlay = new (kakao.maps as any).CustomOverlay({
           content: el,
