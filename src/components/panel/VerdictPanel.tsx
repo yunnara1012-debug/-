@@ -1,6 +1,7 @@
 'use client';
 import type { VerdictResult } from '@/types';
 import { formatDistance } from '@/lib/geo/distance';
+import { DEFAULT_RADIUS } from '@/lib/map/markerStyles';
 import { MapPin, X } from 'lucide-react';
 
 interface Props {
@@ -10,8 +11,9 @@ interface Props {
 }
 
 export function VerdictPanel({ verdict, onCreatePin, onClose }: Props) {
-  const { nearestStore, nearestDistance, searchAddress, region } = verdict;
+  const { nearestStore, nearestDistance, searchAddress, region, radiusUsed } = verdict;
   const locationLabel = searchAddress || region;
+  const radiusLabel = formatDistance(radiusUsed ?? DEFAULT_RADIUS);
 
   return (
     <div className="absolute inset-x-0 bottom-0 md:inset-auto md:right-0 md:top-0 md:bottom-0 md:w-80 bg-white shadow-2xl z-40 flex flex-col rounded-t-2xl md:rounded-none border-t md:border-l border-gray-200">
@@ -49,7 +51,7 @@ export function VerdictPanel({ verdict, onCreatePin, onClose }: Props) {
           </div>
         ) : (
           <div className="text-sm text-gray-400 bg-gray-50 rounded-xl p-3">
-            반경 2km 내 등록된 매장이 없습니다
+            반경 {radiusLabel} 내 등록된 매장이 없습니다
           </div>
         )}
       </div>

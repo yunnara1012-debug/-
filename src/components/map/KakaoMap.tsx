@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useRef, useCallback, useState } from 'react';
 import type { Store, Brand, VerdictResult } from '@/types';
-import { makeMarkerSvg, makeSearchMarkerSvg, getStoreColor } from '@/lib/map/markerStyles';
+import { makeMarkerSvg, makeSearchMarkerSvg, getStoreColor, getStoreRadius, DEFAULT_RADIUS } from '@/lib/map/markerStyles';
 import { getStaticBrandLogoUrl } from '@/lib/map/brandLogos';
 import { haversineDistance } from '@/lib/geo/distance';
 import { getProvincePolygon } from '@/data/provinces';
@@ -314,7 +314,7 @@ export function KakaoMap({ stores, brands, selectedBrandId, verdict, selectedSto
         const circle = new kakao.maps.Circle({
           map,
           center: new kakao.maps.LatLng(store.lat, store.lng),
-          radius: 2000,
+          radius: getStoreRadius(store, currentBrands),
           strokeWeight: 2,
           strokeColor: storeColor,
           strokeOpacity: 0.6,
@@ -445,7 +445,7 @@ export function KakaoMap({ stores, brands, selectedBrandId, verdict, selectedSto
     searchCircleRef.current = new kakao.maps.Circle({
       map,
       center: latlng,
-      radius: 2000,
+      radius: verdict.radiusUsed ?? DEFAULT_RADIUS,
       strokeWeight: 2,
       strokeColor: '#16A34A',
       strokeOpacity: 0.8,

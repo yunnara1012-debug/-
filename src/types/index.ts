@@ -6,6 +6,7 @@ export interface Brand {
   keyword: string;
   color?: string;
   logoUrl?: string;
+  radius?: number; // 독점(출점 가능) 반경, 단위: m. 미설정 시 기본값 2000m
 }
 
 export interface Store {
@@ -60,4 +61,5 @@ export interface VerdictResult {
   searchAddress?: string;
   zoomLevel?: number;
   isRegionSearch?: boolean;
+  radiusUsed?: number;
 }

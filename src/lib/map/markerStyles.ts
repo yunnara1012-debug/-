@@ -18,6 +18,19 @@ export const STATUS_LABELS: Record<StoreStatus, string> = {
 
 export const MULTI_BRAND_COLOR = '#0D9488'; // 두 브랜드 동시 운영 지점 (청록)
 
+export const DEFAULT_RADIUS = 2000; // 반경 미설정 브랜드의 기본값 (m)
+
+export function getBrandRadius(brand: Brand | undefined): number {
+  return brand?.radius ?? DEFAULT_RADIUS;
+}
+
+// 매장이 속한 브랜드들 중 가장 넓은 반경을 적용
+export function getStoreRadius(store: Store, brands: Brand[]): number {
+  const activeBrands = brands.filter(b => store.brandIds.includes(b.id));
+  if (activeBrands.length === 0) return DEFAULT_RADIUS;
+  return Math.max(...activeBrands.map(b => b.radius ?? DEFAULT_RADIUS));
+}
+
 export function getStoreColor(store: Store, brands: Brand[]): string {
   if (store.status !== 'open') return STATUS_COLORS[store.status];
   // 오픈 상태에서 복수 브랜드 보유 → 주황

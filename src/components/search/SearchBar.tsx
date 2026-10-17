@@ -1,11 +1,14 @@
 'use client';
 import { useState, useRef, useCallback, useEffect } from 'react';
-import type { Store, VerdictResult } from '@/types';
+import type { Store, Brand, VerdictResult } from '@/types';
 import { haversineDistance } from '@/lib/geo/distance';
+import { getBrandRadius, DEFAULT_RADIUS } from '@/lib/map/markerStyles';
 import { Search, X, Building2, MapPin } from 'lucide-react';
 
 interface Props {
   stores: Store[];
+  brands: Brand[];
+  selectedBrandId: string;
   onVerdict: (result: VerdictResult) => void;
   onSelectStore?: (store: Store) => void;
 }
@@ -42,7 +45,7 @@ const REGION_MAP: Record<string, { lat: number; lng: number; level: number }> = 
   '제주특별자치도': { lat: 33.4890, lng: 126.4983, level: 9 },
 };
 
-export function SearchBar({ stores, onVerdict, onSelectStore }: Props) {
+export function SearchBar({ stores, brands, selectedBrandId, onVerdict, onSelectStore }: Props) {
   const [query, setQuery] = useState('');
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [loading, setLoading] = useState(false);
@@ -229,11 +232,14 @@ export function SearchBar({ stores, onVerdict, onSelectStore }: Props) {
       }
     }
 
-    const canOpen = nearestDistance >= 2000;
+    const radius = selectedBrandId !== 'all'
+      ? getBrandRadius(brands.find(b => b.id === selectedBrandId))
+      : DEFAULT_RADIUS;
+    const canOpen = nearestDistance >= radius;
     const searchAddress = address ?? placeName;
 
     if (typeof kakao === 'undefined') {
-      onVerdict({ canOpen, nearestStore, nearestDistance: nearestDistance === Infinity ? undefined : nearestDistance, searchLat: lat, searchLng: lng, searchAddress, zoomLevel, isRegionSearch });
+      onVerdict({ canOpen, nearestStore, nearestDistance: nearestDistance === Infinity ? undefined : nearestDistance, searchLat: lat, searchLng: lng, searchAddress, zoomLevel, isRegionSearch, radiusUsed: radius });
       setLoading(false);
       return;
     }
@@ -253,10 +259,11 @@ export function SearchBar({ stores, onVerdict, onSelectStore }: Props) {
         searchAddress,
         zoomLevel,
         isRegionSearch,
+        radiusUsed: radius,
       });
       setLoading(false);
     });
-  }, [stores, onVerdict]);
+  }, [stores, brands, selectedBrandId, onVerdict]);
 
   const handleSelectSuggestion = useCallback((s: Suggestion) => {
     setQuery(s.placeName || s.address);

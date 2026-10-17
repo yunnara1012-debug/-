@@ -1,6 +1,8 @@
 'use client';
 import type { Brand } from '@/types';
 import { getStaticBrandLogoUrl } from '@/lib/map/brandLogos';
+import { getBrandRadius } from '@/lib/map/markerStyles';
+import { formatDistance } from '@/lib/geo/distance';
 import { X, Pencil } from 'lucide-react';
 
 interface Props {
@@ -30,7 +32,10 @@ export function BrandManagePanel({ brands, onEdit, onClose }: Props) {
                     ? <img src={logoUrl} alt="" className="w-full h-full object-contain" />
                     : <span className="w-3 h-3 rounded-full" style={{ backgroundColor: brand.color }} />}
                 </div>
-                <span className="flex-1 text-sm text-gray-700 truncate">{brand.name}</span>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm text-gray-700 truncate">{brand.name}</div>
+                  <div className="text-[11px] text-gray-400">반경 {formatDistance(getBrandRadius(brand))}</div>
+                </div>
                 <button
                   onClick={() => onEdit(brand)}
                   className="flex-none p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"

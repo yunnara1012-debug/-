@@ -2,11 +2,12 @@
 import { useState } from 'react';
 import type { Brand } from '@/types';
 import { getStaticBrandLogoUrl } from '@/lib/map/brandLogos';
+import { DEFAULT_RADIUS } from '@/lib/map/markerStyles';
 import { X } from 'lucide-react';
 
 interface Props {
   initialBrand?: Brand;
-  onSubmit: (name: string, logoUrl?: string) => void;
+  onSubmit: (name: string, logoUrl?: string, radius?: number) => void;
   onClose: () => void;
 }
 
@@ -26,6 +27,9 @@ export function BrandModal({ initialBrand, onSubmit, onClose }: Props) {
     initialBrand ? (initialBrand.logoUrl ?? getStaticBrandLogoUrl(initialBrand)) : undefined
   );
   const [fileName, setFileName] = useState('');
+  const [radiusKm, setRadiusKm] = useState(
+    String((initialBrand?.radius ?? DEFAULT_RADIUS) / 1000)
+  );
 
   const handleFile = async (file: File | undefined) => {
     if (!file) return;
@@ -35,7 +39,9 @@ export function BrandModal({ initialBrand, onSubmit, onClose }: Props) {
 
   const handleSubmit = () => {
     if (!name.trim()) return;
-    onSubmit(name.trim(), logoPreview);
+    const km = parseFloat(radiusKm);
+    const radius = Number.isFinite(km) && km > 0 ? Math.round(km * 1000) : DEFAULT_RADIUS;
+    onSubmit(name.trim(), logoPreview, radius);
   };
 
   return (
@@ -77,6 +83,17 @@ export function BrandModal({ initialBrand, onSubmit, onClose }: Props) {
             />
           </label>
         </div>
+
+        <label className="block text-xs text-gray-500 mb-1">독점 반경 (km)</label>
+        <input
+          type="number"
+          min="0.1"
+          step="0.1"
+          value={radiusKm}
+          onChange={e => setRadiusKm(e.target.value)}
+          placeholder="예: 1.5"
+          className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-400 mb-5"
+        />
 
         <div className="flex gap-2">
           <button onClick={onClose} className="flex-1 py-2 text-sm rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors">취소</button>

@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import type { Store, Brand, StoreStatus } from '@/types';
-import { STATUS_LABELS, getStoreColor } from '@/lib/map/markerStyles';
+import { STATUS_LABELS, getStoreColor, getStoreRadius } from '@/lib/map/markerStyles';
 import { haversineDistance, formatDistance } from '@/lib/geo/distance';
 import { X, Phone, Edit3, Trash2, Check, MapPin, Loader2 } from 'lucide-react';
 
@@ -16,18 +16,19 @@ interface Props {
 
 const STATUSES: StoreStatus[] = ['open', 'contracted', 'closed', 'candidate'];
 
-function computeCanOpen(store: Store, allStores: Store[]): { canOpen: boolean; nearestDistance?: number; nearestName?: string } {
+function computeCanOpen(store: Store, allStores: Store[], brands: Brand[]): { canOpen: boolean; nearestDistance?: number; nearestName?: string } {
   const others = allStores.filter(
     s => s.id !== store.id && s.brandIds.some(b => store.brandIds.includes(b)) && ['open', 'contracted', 'consulting'].includes(s.status)
   );
   if (others.length === 0) return { canOpen: true };
+  const radius = getStoreRadius(store, brands);
   let nearest = Infinity;
   let nearestName = '';
   for (const o of others) {
     const d = haversineDistance(store.lat, store.lng, o.lat, o.lng);
     if (d < nearest) { nearest = d; nearestName = o.name; }
   }
-  return { canOpen: nearest >= 2000, nearestDistance: nearest, nearestName };
+  return { canOpen: nearest >= radius, nearestDistance: nearest, nearestName };
 }
 
 function formatPhone(value: string): string {
@@ -120,7 +121,7 @@ export function StorePanel({ store, brands, allStores, onUpdate, onDelete, onClo
     getAddressVariants(store.address).then(setAddrVariants);
   }, [store.id, store.address]);
 
-  const { canOpen, nearestDistance, nearestName } = computeCanOpen(form, allStores);
+  const { canOpen, nearestDistance, nearestName } = computeCanOpen(form, allStores, brands);
   const storeColor = getStoreColor(form, brands);
 
   const handleGeocode = async () => {

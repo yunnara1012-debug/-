@@ -184,9 +184,9 @@ export default function Home() {
     setShowBrandModal(true);
   }, []);
 
-  const handleCreateBrand = useCallback((name: string, logoUrl?: string) => {
+  const handleCreateBrand = useCallback((name: string, logoUrl?: string, radius?: number) => {
     const color = BRAND_COLORS[brands.length % BRAND_COLORS.length];
-    const brand: Brand = { id: 'brand-' + Date.now(), name, keyword: name, color, ...(logoUrl ? { logoUrl } : {}) };
+    const brand: Brand = { id: 'brand-' + Date.now(), name, keyword: name, color, ...(logoUrl ? { logoUrl } : {}), ...(radius ? { radius } : {}) };
     setBrands(prev => [...prev, brand]);
     upsertBrand(brand);
     setShowBrandModal(false);
@@ -197,11 +197,11 @@ export default function Home() {
     setShowBrandManage(true);
   }, []);
 
-  const handleUpdateBrand = useCallback((name: string, logoUrl?: string) => {
+  const handleUpdateBrand = useCallback((name: string, logoUrl?: string, radius?: number) => {
     setEditingBrand(current => {
       if (!current) return current;
       setBrands(prev => {
-        const next = prev.map(b => b.id === current.id ? { ...b, name, keyword: name, logoUrl } : b);
+        const next = prev.map(b => b.id === current.id ? { ...b, name, keyword: name, logoUrl, radius } : b);
         const updated = next.find(b => b.id === current.id);
         if (updated) upsertBrand(updated);
         return next;
@@ -228,7 +228,7 @@ export default function Home() {
 
           {/* 검색창 - 데스크톱만 */}
           <div className="hidden md:block flex-1 min-w-0">
-            <SearchBar stores={selectedBrandStores} onVerdict={handleVerdict} onSelectStore={handleHighlightStore} />
+            <SearchBar stores={selectedBrandStores} brands={brands} selectedBrandId={selectedBrandId} onVerdict={handleVerdict} onSelectStore={handleHighlightStore} />
           </div>
 
           {/* 모바일 스페이서 */}
@@ -307,7 +307,7 @@ export default function Home() {
 
         {/* 검색창 - 모바일만 */}
         <div className="md:hidden px-3 pb-2">
-          <SearchBar stores={selectedBrandStores} onVerdict={handleVerdict} onSelectStore={handleHighlightStore} />
+          <SearchBar stores={selectedBrandStores} brands={brands} selectedBrandId={selectedBrandId} onVerdict={handleVerdict} onSelectStore={handleHighlightStore} />
         </div>
 
         {/* 필터 행 */}
